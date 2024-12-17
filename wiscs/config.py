@@ -1,0 +1,5 @@
+"""
+Configuartion variables
+"""
+
+p = None
