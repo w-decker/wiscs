@@ -3,6 +3,10 @@ import numpy as np
 import numpy.typing as npt
 import math
 
+def make_tasks(low, high, n) -> npt.ArrayLike:
+    """Generate task parameters"""
+    return np.random.permutation(np.linspace(low, high, n).round(0))
+
 def deltas(DG:DataGenerator, idx:str) -> npt.ArrayLike:
     """Calculate differences across experimental variable
     
