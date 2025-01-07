@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="wiscs",
-    version="1.0.0",
+    version="2.0.0",
     author="Will Decker",
     author_email="will.decker@gatech.edu",
     description="Simulating data for the project, Words and Images in Shared Concpetual Space",
