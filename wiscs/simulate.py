@@ -7,50 +7,101 @@ import numpy.typing as npt
 import pandas as pd
 import copy
 
-def make_tasks(low, high, n) -> npt.ArrayLike:
-    """Generate task parameters"""
-    return np.random.permutation(np.linspace(low, high, n).round(0))
+def generate(params: dict) -> tuple[npt.ArrayLike | None, npt.ArrayLike | None]:
+    """
+    Generate data for a within- or between-subjects design.
 
-def generate(params:dict) -> npt.ArrayLike | npt.ArrayLike:
-    """Generate data
-    
+    Parameters
+    ----------
+    params : dict
+        Experimental parameters.
+    design : str
+        Either "within" (default) or "between" to specify the experimental design.
+
     Returns
     -------
-    image, word
+    tuple[npt.ArrayLike | None, npt.ArrayLike | None]
+        Generated data for images and words.
     """
 
     if not np.array_equal(params["image"]["task"], params["word"]["task"]):
         warnings.warn("Tasks parameters are different. Generating data for ALTERNATIVE hypothesis.")
+    else:
+        warnings.warn("Tasks parameters are the same. Generating data for MAIN hypothesis.")
 
     additional_image_vars = sum(
-        params["image"].get(key, 0) 
+        params["image"].get(key, 0)
         for key in params["image"] if key not in ["concept", "task"]
     )
 
     additional_word_vars = sum(
-        params["word"].get(key, 0) 
+        params["word"].get(key, 0)
         for key in params["word"] if key not in ["concept", "task"]
     )
 
-    # noise distributions
-    var_item_image = np.random.normal(0, params["var"]["image"], (params["n"]["participant"], params["n"]["question"], params["n"]["trial"]))
-    var_item_word = np.random.normal(0, params["var"]["word"], (params["n"]["participant"], params["n"]["question"], params["n"]["trial"]))
-    var_question = np.random.normal(0, params["var"]["question"], (params["n"]["participant"], params["n"]["question"], params["n"]["trial"]))
-    var_participant = np.random.normal(0, params["var"]["participant"], (params["n"]["participant"], params["n"]["question"], params["n"]["trial"]))
+    n_participants = params["n"]["participant"]
 
-    return \
-            (params["image"]["concept"]
+    # Handle within-subjects design
+    if list(params['design'].values())[0] == "within":
+        var_item_image = np.random.normal(0, params["var"]["image"], (n_participants, params["n"]["question"], params["n"]["trial"]))
+        var_item_word = np.random.normal(0, params["var"]["word"], (n_participants, params["n"]["question"], params["n"]["trial"]))
+        var_question = np.random.normal(0, params["var"]["question"], (n_participants, params["n"]["question"], params["n"]["trial"]))
+        var_participant = np.random.normal(0, params["var"]["participant"], (n_participants, params["n"]["question"], params["n"]["trial"]))
+
+        image_data = (
+            params["image"]["concept"]
             + additional_image_vars
-           + params["image"]["task"][None, :, None] 
-           + var_item_image
-           + var_participant
-           + var_question), \
-            (params["word"]["concept"]
-             + additional_word_vars
+            + params["image"]["task"][None, :, None]
+            + var_item_image
+            + var_participant
+            + var_question
+        )
+        
+        word_data = (
+            params["word"]["concept"]
+            + additional_word_vars
             + params["word"]["task"][None, :, None]
             + var_item_word
             + var_question
-            + var_participant)
+            + var_participant
+        )
+
+        return image_data, word_data
+
+    # Handle between-subjects design
+    elif list(params['design'].values())[0] == "between":
+        half_participants = n_participants // 2
+
+        # Generate data for the first half (images)
+        var_item_image = np.random.normal(0, params["var"]["image"], (half_participants, params["n"]["question"], params["n"]["trial"]))
+        var_question_image = np.random.normal(0, params["var"]["question"], (half_participants, params["n"]["question"], params["n"]["trial"]))
+        var_participant_image = np.random.normal(0, params["var"]["participant"], (half_participants, params["n"]["question"], params["n"]["trial"]))
+
+        image_data = (
+            params["image"]["concept"]
+            + additional_image_vars
+            + params["image"]["task"][None, :, None]
+            + var_item_image
+            + var_participant_image
+            + var_question_image
+        )
+
+        # Generate data for the second half (words)
+        var_item_word = np.random.normal(0, params["var"]["word"], (half_participants, params["n"]["question"], params["n"]["trial"]))
+        var_question_word = np.random.normal(0, params["var"]["question"], (half_participants, params["n"]["question"], params["n"]["trial"]))
+        var_participant_word = np.random.normal(0, params["var"]["participant"], (half_participants, params["n"]["question"], params["n"]["trial"]))
+
+        word_data = (
+            params["word"]["concept"]
+            + additional_word_vars
+            + params["word"]["task"][None, :, None]
+            + var_item_word
+            + var_question_word
+            + var_participant_word
+        )
+
+        return image_data, word_data
+
 
 class DataGenerator(object):
     """Data generator
@@ -72,7 +123,7 @@ class DataGenerator(object):
     def __init__(self):
         self.params = copy.deepcopy(config.p)
 
-    def fit(self, params:dict=None, overwrite:bool=False):
+    def fit_transform(self, params:dict=None, overwrite:bool=False):
         if overwrite:
             if params is None:
                 raise ValueError("If overwrite is True, params must be provided")
@@ -96,22 +147,26 @@ class DataGenerator(object):
         return self    
     
     def to_pandas(self) -> pd.DataFrame:
-        """Convert data to pandas dataframe"""
-        
-        df_image = pd.DataFrame({
-            'participant': np.repeat(np.arange(self.params["n"]["participant"]), self.params["n"]["question"] * self.params["n"]["trial"]),
-            'question': np.tile(np.repeat(np.arange( self.params["n"]["question"]), self.params["n"]["trial"]), self.params["n"]["participant"]),
-            'trial': np.tile(np.arange(self.params["n"]["trial"]), self.params["n"]["participant"] * self.params["n"]["question"]),
-            'RT': self.data[0].flatten() # image data
+        """
+        Convert data to pandas DataFrame.
+        """
+        # image
+        n_participants, n_questions, n_trials = self.data[0].shape
+        image_df = pd.DataFrame({
+            "subject": np.repeat(np.arange(n_participants), n_questions * n_trials),
+            "rt": self.data[0].flatten(),
+            "question": np.tile(np.repeat(np.arange(n_questions), n_trials), n_participants),
+            "modality": "image"
         })
 
-        df_word = pd.DataFrame({
-            'participant': np.repeat(np.arange(self.params["n"]["participant"]), self.params["n"]["question"] * self.params["n"]["trial"]),
-            'question': np.tile(np.repeat(np.arange( self.params["n"]["question"]), self.params["n"]["trial"]), self.params["n"]["participant"]),
-            'trial': np.tile(np.arange(self.params["n"]["trial"]), self.params["n"]["participant"] * self.params["n"]["question"]),
-            'RT': self.data[1].flatten() # word data
+        # word
+        word_df = pd.DataFrame({
+            "subject": np.repeat(np.arange(self.data[1].shape[0]), n_questions * n_trials),
+            "rt": self.data[1].flatten(),
+            "question": np.tile(np.repeat(np.arange(n_questions), n_trials), self.data[1].shape[0]),
+            "modality": "word"
         })
 
-        df_image['modality'] = 'image'
-        df_word['modality'] = 'word'
-        return pd.concat([df_image, df_word], ignore_index=True)
+        # concatenate
+        df = pd.concat([image_df, word_df], ignore_index=True)
+        return df
