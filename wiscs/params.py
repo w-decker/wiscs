@@ -32,26 +32,29 @@ EMPTY_PARAMS = {
 def validate_params(params: dict) -> bool:
     for key, value in params.items():
         if key not in EMPTY_PARAMS:
-            raise ValueError(f"Unexpected parameter: {key}")
 
-        expected_type = EMPTY_PARAMS[key]
+            # Check for wildcard keys like `image.*`
+            if any(key.startswith(prefix.split('.')[0]) and "*" in prefix for prefix in EMPTY_PARAMS):
+                expected_type = EMPTY_PARAMS['image.*']
+            else:
+                raise ValueError(f"Unexpected parameter: {key}")
+        else:
+            expected_type = EMPTY_PARAMS[key]
 
-        # Handle Union types
-        if hasattr(expected_type, '__origin__') and expected_type.__origin__ is Union:
+        # Handle different types of expected types
+        if isinstance(expected_type, type):
+            # Regular type
+            if not isinstance(value, expected_type):
+                raise TypeError(f"Parameter {key} should be {expected_type}, but got {type(value)}")
+
+        elif hasattr(expected_type, '__origin__') and expected_type.__origin__ is Union:
+            # Handle Union types
             union_args = get_args(expected_type)
-            # Special case for npt.ArrayLike in Union
-            if npt.ArrayLike in union_args and isinstance(value, np.ndarray):
-                continue
-            if not any(isinstance(value, t) for t in union_args if isinstance(t, type)):
+            if not any(isinstance(value, t) for t in union_args if not hasattr(t, '__origin__')):
                 raise TypeError(f"Parameter {key} should be one of {union_args}, but got {type(value)}")
 
-        # handle npt.ArrayLike
-        elif expected_type == npt.ArrayLike:
-            if not isinstance(value, (np.ndarray, list, tuple)):
-                raise TypeError(f"Parameter {key} should be array-like, but got {type(value)}")
-
-        # Handle other types (e.g., dict, Callable, etc.)
         elif hasattr(expected_type, '__origin__') and expected_type.__origin__ is dict:
+            # Handle Dict types
             key_type, value_type = get_args(expected_type)
             if not isinstance(value, dict):
                 raise TypeError(f"Parameter {key} should be a dict, but got {type(value)}")
@@ -61,8 +64,13 @@ def validate_params(params: dict) -> bool:
                 if not isinstance(v, value_type):
                     raise TypeError(f"Values in parameter {key} should be {value_type}, but got {type(v)}")
 
-        # Handle Callable types
-        elif hasattr(expected_type, '__origin__') and expected_type.__origin__ is Callable:
+        elif expected_type == npt.ArrayLike:
+            # Handle array-like types
+            if not isinstance(value, (list, tuple, np.ndarray)):
+                raise TypeError(f"Parameter {key} should be array-like, but got {type(value)}")
+
+        elif expected_type == Callable[..., npt.ArrayLike]:
+            # Handle Callable types
             if not callable(value):
                 raise TypeError(f"Parameter {key} should be callable, but got {type(value)}")
 
@@ -70,7 +78,6 @@ def validate_params(params: dict) -> bool:
             raise TypeError(f"Unsupported type for parameter {key}: {expected_type}")
 
     return True
-
 
 def parse_params(params):
     """
