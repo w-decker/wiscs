@@ -101,7 +101,6 @@ def parse_params(params):
             parsed[key] = value
     return dict(parsed)
 
-
 def update_params(params, kwargs) -> dict:
     """
     Update parameters with new values.
