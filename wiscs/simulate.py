@@ -156,6 +156,7 @@ class DataGenerator(object):
             "subject": np.repeat(np.arange(n_participants), n_questions * n_trials),
             "rt": self.data[0].flatten(),
             "question": np.tile(np.repeat(np.arange(n_questions), n_trials), n_participants),
+            "item": np.tile(np.arange(n_trials), n_participants * n_questions),
             "modality": "image"
         })
 
@@ -164,6 +165,7 @@ class DataGenerator(object):
             "subject": np.repeat(np.arange(self.data[1].shape[0]), n_questions * n_trials),
             "rt": self.data[1].flatten(),
             "question": np.tile(np.repeat(np.arange(n_questions), n_trials), self.data[1].shape[0]),
+            "item": np.tile(np.arange(n_trials), n_participants * n_questions),
             "modality": "word"
         })
 
