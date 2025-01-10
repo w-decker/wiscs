@@ -31,7 +31,10 @@ params = {
 
     'n.participant': ...,
     'n.question': ...,
-    'n.trial': ...
+    'n.trial': ...,
+
+    'design':{'items':'within'}
+
 }
 ```
 
@@ -64,11 +67,18 @@ from wiscs.simulate import DataGenerator
 DG = DataGenerator()
 ```
 
-To generated the data, simply implement the `.fit()` method.
+To generated the data, simply implement the `.fit_transform()` method.
 
 ```python
-DG.fit()
+DG.fit_transform()
 ```
+
+If you want to provide the `DataGenerator()` class with a new set of parameters, you can either reset them using `wiscs.set_params()` or you can simply provide a new set of params to the `.fit_transform()` method. 
+
+```python
+DG.fit_transform(params, overwrite=True)
+```
+Setting `overwrite=True` means that this new set of params will overwrite the original ones set using `wiscs.set_params()`. The default is `False`, which makes it easy to substitue any number of parameter dictionaries iterativelys. 
 
 Data can be accessed with the `.data` attribute.
 
