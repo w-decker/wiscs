@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import numpy.typing as npt
-from .methods import deltas, nearest_square_dims, pairwise_deltas
+from .utils import deltas, nearest_square_dims, pairwise_deltas
 
 class Plot(DataGenerator):
     def __init__(self, DG: DataGenerator):
