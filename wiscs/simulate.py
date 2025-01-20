@@ -7,108 +7,89 @@ import numpy.typing as npt
 import pandas as pd
 import copy
 
-def generate(params: dict) -> tuple[npt.ArrayLike | None, npt.ArrayLike | None]:
-    """
-    Generate data for a within- or between-subjects design.
+import numpy as np
+import warnings
+import numpy.typing as npt
 
-    Parameters
-    ----------
-    params : dict
-        Experimental parameters.
-    design : str
-        Either "within" (default) or "between" to specify the experimental design.
+def generate(params:dict, seed:int=None):
 
-    Returns
-    -------
-    tuple[npt.ArrayLike | None, npt.ArrayLike | None]
-        Generated data for images and words.
-    """
+    if seed is not None:
+        np.random.seed(seed)
 
-    if not np.array_equal(params["image"]["task"], params["word"]["task"]):
-        warnings.warn("Tasks parameters are different. Generating data for ALTERNATIVE hypothesis.")
-    else:
-        warnings.warn("Tasks parameters are the same. Generating data for MAIN hypothesis.")
+    # get experimental parameters
+    n_sub = params["n"]["subject"]
+    n_ques = params["n"]["question"]
+    n_item = params["n"]["trial"]
 
-    additional_image_vars = sum(
-        params["image"].get(key, 0)
-        for key in params["image"] if key not in ["concept", "task"]
+    w_perceptual = params["word"]["perceptual"]
+    w_conceptual = params["word"]["conceptual"]
+    w_task_times = params["word"]["task"]
+
+    i_perceptual = params["image"]["perceptual"]
+    i_conceptual = params["image"]["conceptual"]
+    i_task_times = params["image"]["task"]
+
+    Sigma_sub   = params["var"]["subject"]   # shape (2,2)
+    Sigma_ques  = params["var"]["question"]  # shape (2,2)
+    Sigma_item  = params["var"]["item"]      # shape (2,2)
+    sigma_error = params["var"]["error"]     # float
+
+    uv_sub = np.random.multivariate_normal(mean=[0, 0], cov=Sigma_sub, size=n_sub)
+    sub_u = uv_sub[:, 0]  # random intercept for subject
+    sub_v = uv_sub[:, 1]  # random slope wrt image for subject
+
+    uv_ques = np.random.multivariate_normal(mean=[0, 0], cov=Sigma_ques, size=n_ques)
+    ques_u = uv_ques[:, 0]  # random intercept for question
+    ques_v = uv_ques[:, 1]  # random slope wrt image for question
+
+    uv_item = np.random.multivariate_normal(mean=[0, 0], cov=Sigma_item, size=n_item)
+    item_u = uv_item[:, 0]  # random intercept for item
+    item_v = uv_item[:, 1]  # random slope wrt image for item
+
+    S_grid, Q_grid, I_grid = np.meshgrid(
+        np.arange(n_sub),
+        np.arange(n_ques),
+        np.arange(n_item),
+        indexing='ij'
     )
 
-    additional_word_vars = sum(
-        params["word"].get(key, 0)
-        for key in params["word"] if key not in ["concept", "task"]
+    word_random = (
+        sub_u[S_grid]          # subject intercept
+        + ques_u[Q_grid]       # question intercept
+        + item_u[I_grid]       # item intercept
+    )
+    # plus a distinct residual error for each cell
+    word_error = np.random.normal(0, sigma_error, size=(n_sub, n_ques, n_item))
+
+    image_random = (
+        (sub_u[S_grid] + sub_v[S_grid])       # subject intercept + slope
+        + (ques_u[Q_grid] + ques_v[Q_grid])   # question intercept + slope
+        + (item_u[I_grid] + item_v[I_grid])   # item intercept + slope
+    )
+    image_error = np.random.normal(0, sigma_error, size=(n_sub, n_ques, n_item))
+
+    word_base = (
+        w_perceptual
+        + w_conceptual
+        + w_task_times[Q_grid]  # shape (n_sub, n_ques, n_item)
+    )
+    image_base = (
+        i_perceptual
+        + i_conceptual
+        + i_task_times[Q_grid]
     )
 
-    n_participants = params["n"]["participant"]
+    word = word_base + word_random + word_error
+    image = image_base + image_random + image_error
 
-    # Handle within-subjects design
-    if list(params['design'].values())[0] == "within":
-        var_item_image = np.random.normal(0, params["var"]["image"], (n_participants, params["n"]["question"], params["n"]["trial"]))
-        var_item_word = np.random.normal(0, params["var"]["word"], (n_participants, params["n"]["question"], params["n"]["trial"]))
-        var_question = np.random.normal(0, params["var"]["question"], (n_participants, params["n"]["question"], params["n"]["trial"]))
-        var_participant = np.random.normal(0, params["var"]["participant"], (n_participants, params["n"]["question"], params["n"]["trial"]))
-
-        image_data = (
-            params["image"]["concept"]
-            + additional_image_vars
-            + params["image"]["task"][None, :, None]
-            + var_item_image
-            + var_participant
-            + var_question
-        )
-        
-        word_data = (
-            params["word"]["concept"]
-            + additional_word_vars
-            + params["word"]["task"][None, :, None]
-            + var_item_word
-            + var_question
-            + var_participant
-        )
-
-        return image_data, word_data
-
-    # Handle between-subjects design
-    elif list(params['design'].values())[0] == "between":
-        half_participants = n_participants // 2
-
-        # Generate data for the first half (images)
-        var_item_image = np.random.normal(0, params["var"]["image"], (half_participants, params["n"]["question"], params["n"]["trial"]))
-        var_question_image = np.random.normal(0, params["var"]["question"], (half_participants, params["n"]["question"], params["n"]["trial"]))
-        var_participant_image = np.random.normal(0, params["var"]["participant"], (half_participants, params["n"]["question"], params["n"]["trial"]))
-
-        image_data = (
-            params["image"]["concept"]
-            + additional_image_vars
-            + params["image"]["task"][None, :, None]
-            + var_item_image
-            + var_participant_image
-            + var_question_image
-        )
-
-        # Generate data for the second half (words)
-        var_item_word = np.random.normal(0, params["var"]["word"], (half_participants, params["n"]["question"], params["n"]["trial"]))
-        var_question_word = np.random.normal(0, params["var"]["question"], (half_participants, params["n"]["question"], params["n"]["trial"]))
-        var_participant_word = np.random.normal(0, params["var"]["participant"], (half_participants, params["n"]["question"], params["n"]["trial"]))
-
-        word_data = (
-            params["word"]["concept"]
-            + additional_word_vars
-            + params["word"]["task"][None, :, None]
-            + var_item_word
-            + var_question_word
-            + var_participant_word
-        )
-
-        return image_data, word_data
-
+    return word, image
 
 class DataGenerator(object):
     """Data generator
     
     Methods
     -------
-    fit(self, params:dict=None, overwrite:bool=False)
+    fit_transform(self, params:dict=None, overwrite:bool=False)
         Generate data based on parameters
 
     to_pandas(self) -> pd.DataFrame
@@ -124,6 +105,11 @@ class DataGenerator(object):
         self.params = copy.deepcopy(config.p)
 
     def fit_transform(self, params:dict=None, overwrite:bool=False):
+        if np.array_equal(self.params["word"]["task"], self.params["image"]["task"]):
+            warnings.warn("Simulating data for MAIN hypothesis.")
+        else:
+            warnings.warn("Simulating data for ALTERNATIVE hypothesis.")
+        
         if overwrite:
             if params is None:
                 raise ValueError("If overwrite is True, params must be provided")
@@ -152,7 +138,7 @@ class DataGenerator(object):
         """
         # image
         n_participants, n_questions, n_trials = self.data[0].shape
-        image_df = pd.DataFrame({
+        word_df = pd.DataFrame({
             "subject": np.repeat(np.arange(n_participants), n_questions * n_trials),
             "rt": self.data[0].flatten(),
             "question": np.tile(np.repeat(np.arange(n_questions), n_trials), n_participants),
@@ -161,7 +147,7 @@ class DataGenerator(object):
         })
 
         # word
-        word_df = pd.DataFrame({
+        image_df = pd.DataFrame({
             "subject": np.repeat(np.arange(self.data[1].shape[0]), n_questions * n_trials),
             "rt": self.data[1].flatten(),
             "question": np.tile(np.repeat(np.arange(n_questions), n_trials), self.data[1].shape[0]),
