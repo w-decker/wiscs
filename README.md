@@ -1,9 +1,15 @@
 # wiscs
-Simulating experimental data for the project, Word and Images in Shared Conceptual Space (WISCS). This code operates under the assumption that a reaction time, $S$, is a combination of some cognitive processing, $C$, plus some noise. This is modeled below.
+Simulating experimental data for the project, Word and Images in Shared Conceptual Space (WISCS). This code operates under the assumption that a single reaction time, $S$, is a combination of some cognitive processing, $C$, plus some noise. This is modeled below.
 
 $$
 S = C + \epsilon
 $$
+
+However, reaction times across subjects and factors must also be taken into account. Data are modeled 1) as a fully crossed design (all subjects see all levels of the experiment), 2) under the assumption that each `subject`, `question`, and `item` have a random intercept and 3) that `question` and `item` have a random intecept with respect to `subject`. A an example formula for these data is below:
+
+```r
+reaction time ~ modality + question + (1 + item + question | subject) + (1|item) + (1|question)
+```
 
 ## Installation 
 
@@ -19,22 +25,23 @@ pip install git+https://github.com/w-decker/wiscs.git
 
 ```python
 params = {
-    'word.concept': ...,
-    'image.concept': ...,
+    'word.perceptual': ...,
+    'image.perceptual': ...,
+
+    'word.conceptual': ...,
+    'image.conceptual': ...,
+
     'word.task': ...,
     'image.task': ...,
 
-    'var.image': ...,
-    'var.word': ...,
+    'var.item': ...,
     'var.question': ...,
-    'var.participant': ...,
+    'var.subject': ...,
+    "var.error": ...,
 
-    'n.participant': ...,
+    'n.subject': ...,
     'n.question': ...,
     'n.trial': ...,
-
-    'design':{'items':'within'}
-
 }
 ```
 
@@ -83,7 +90,7 @@ Setting `overwrite=True` means that this new set of params will overwrite the or
 Data can be accessed with the `.data` attribute.
 
 ```python
-image, word = DG.data
+word, image = DG.data
 ```
 
 Data can also be converted to a `pandas` dataframe for easier use.
