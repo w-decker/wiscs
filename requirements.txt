@@ -1,4 +1,5 @@
 matplotlib==3.8.4
-numpy==2.2.1
+numpy==2.2.2
 pandas==2.2.3
+seaborn==0.13.2
 setuptools==75.1.0
