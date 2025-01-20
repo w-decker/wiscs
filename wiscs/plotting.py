@@ -3,11 +3,14 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import numpy.typing as npt
+import seaborn as sns # type: ignore
+import pandas as pd
 from .utils import deltas, nearest_square_dims, pairwise_deltas
 
 class Plot(DataGenerator):
     def __init__(self, DG: DataGenerator):
         self.__dict__ = DG.__dict__.copy()
+        self.DG = DG
     
     def grid(self, **kwargs):
         """Plot grid of data distributions
@@ -102,6 +105,67 @@ class Plot(DataGenerator):
                 
                 ax.legend()
             plt.show()
+            
+    def plot_bargraph(self, title: str, hypothesis_title:str):
+
+        df = self.DG.to_pandas()
+        # Ensure 'question' is a categorical variable
+        df['question'] = pd.Categorical(df['question'])
+
+        colors = {'word': 'dodgerblue', 'image': 'forestgreen'}
+        meanc = {'word': 'red', 'image': 'red'}
+
+        fig, ax = plt.subplots(2, 1, figsize=(15, 7))
+
+        # Bar plots
+        sns.barplot(
+            x='question', y='rt', hue='modality', data=df, ax=ax[0],
+            errorbar='sd', alpha=0.4, err_kws={'linewidth': 1.5},
+            capsize=0.1, palette=colors, edgecolor='black', dodge=True, legend=False
+        )
+        sns.barplot(
+            x='question', y='rt', hue='modality', data=df, ax=ax[1],
+            errorbar='sd', alpha=0.4, err_kws={'linewidth': 1.5},
+            capsize=0.1, palette=colors, edgecolor='black', dodge=True
+        )
+
+        # Mean calculations
+        means = df.groupby(['question', 'modality'], as_index=False).mean()
+
+        # Define dodge amount based on the number of modalities
+        dodge_amount = 0.4  # Adjust as needed
+        modalities = ['word', 'image']
+        modality_offsets = {modality: i * dodge_amount - dodge_amount / 2 for i, modality in enumerate(modalities)}
+
+        # Apply dodge adjustment to x positions
+        means['x_dodge'] = means.apply(lambda row: int(row['question']) + modality_offsets[row['modality']], axis=1)
+
+        # Lines for each modality with dodged x values
+        for modality in modalities:
+            modality_means = means[means['modality'] == modality]
+            ax[0].plot(
+                modality_means['x_dodge'], modality_means['rt'],
+                marker='o', color=meanc[modality], label=modality, linewidth=2
+            )
+
+        # Adjust legend placement
+        plt.legend(loc='center left', bbox_to_anchor=(1, 1.1), title='Modality')
+
+        # Clean up axes
+        for a in ax:
+            a.set_ylabel('Reaction time (ms)')
+            a.spines['top'].set_visible(False)
+            a.spines['right'].set_visible(False)
+
+        ax[0].set_xlabel(None)
+        ax[1].set_xlabel('Question')
+
+        # Titles
+        plt.suptitle(title, fontsize=16, y=0.95)
+        plt.figtext(0.5, 0.9, hypothesis_title, ha='center', va='center', fontsize=12)
+
+        plt.tight_layout()
+        plt.show()
 
 def plot_deltas(DG1:DataGenerator, DG2:DataGenerator, idx:str, labels:list[str]) -> None:
     """Plot deltas
@@ -193,3 +257,4 @@ def plot_scatter(DG1:DataGenerator, DG2:DataGenerator, idx:str, labels:list[str]
     plt.subplots_adjust(wspace=0.6)
 
     plt.show()
+
