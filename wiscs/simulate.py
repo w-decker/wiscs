@@ -36,15 +36,15 @@ def generate(params:dict, seed:int=None):
 
     uv_sub = np.random.multivariate_normal(mean=[0, 0], cov=Sigma_sub, size=n_sub)
     sub_u = uv_sub[:, 0]  # random intercept for subject
-    sub_v = uv_sub[:, 1]  # random slope wrt image for subject
+    sub_v = uv_sub[:, 1]  # random slope
 
     uv_ques = np.random.multivariate_normal(mean=[0, 0], cov=Sigma_ques, size=n_ques)
     ques_u = uv_ques[:, 0]  # random intercept for question
-    ques_v = uv_ques[:, 1]  # random slope wrt image for question
+    ques_v = uv_ques[:, 1]  # random slope
 
     uv_item = np.random.multivariate_normal(mean=[0, 0], cov=Sigma_item, size=n_item)
     item_u = uv_item[:, 0]  # random intercept for item
-    item_v = uv_item[:, 1]  # random slope wrt image for item
+    item_v = uv_item[:, 1]  # random slope
 
     S_grid, Q_grid, I_grid = np.meshgrid(
         np.arange(n_sub),
