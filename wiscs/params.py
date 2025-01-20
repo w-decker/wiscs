@@ -1,79 +1,87 @@
 from collections import defaultdict
 import numpy as np
 import numpy.typing as npt
-from typing import Callable, Union, get_args, Dict
-import types
+from typing import Callable, Union, get_args
 
 EMPTY_PARAMS = {
     'word.perceptual': Union[int, float],
     'image.perceptual': Union[int, float],
 
-    'word.concept': Union[int, float],
-    'image.concept': Union[int, float],
+    'word.conceptual': Union[int, float],
+    'image.conceptual': Union[int, float],
 
     'word.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
     'image.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
 
-    'image.*': Union[int, float, Callable[..., npt.ArrayLike]],
-    'word.*': Union[int, float, Callable[..., npt.ArrayLike]],
+    'var.item': npt.ArrayLike,
+    'var.question':npt.ArrayLike,
+    'var.subject': npt.ArrayLike,
+    "var.error": Union[int, float],
 
-    'var.image': Union[int, float],
-    'var.word': Union[int, float],
-    'var.question': Union[int, float],
-    'var.participant': Union[int, float], 
-
-    'n.participant': int,
+    'n.subject': int,
     'n.question': int,
     'n.trial': int,
-
-    'design': Dict[str, Union[str, bool]],
 }
 
 def validate_params(params: dict) -> bool:
-    for key, value in params.items():
-        if key not in EMPTY_PARAMS:
+    """
+    Validate a dictionary of parameters against the expected structure and types in EMPTY_PARAMS.
 
-            # Check for wildcard keys like `image.*`
-            if any(key.startswith(prefix.split('.')[0]) and "*" in prefix for prefix in EMPTY_PARAMS):
-                expected_type = EMPTY_PARAMS['image.*']
-            else:
+    Parameters
+    ----------
+    params: dict
+        The parameters to validate.
+
+    Returns
+    -------
+    bool
+        True if all parameters are valid; raises an exception otherwise.
+
+    Raises
+    ------
+    ValueError
+        If a parameter is unexpected or does not match the expected type.
+    TypeError
+        If a parameter value does not match the expected type.
+    """
+    for key, value in params.items():
+        # Match exact keys or wildcard patterns
+        if key not in EMPTY_PARAMS:
+            matched = False
+            for prefix, expected_type in EMPTY_PARAMS.items():
+                if "*" in prefix and key.startswith(prefix.split('.')[0]):
+                    matched = True
+                    break
+            if not matched:
                 raise ValueError(f"Unexpected parameter: {key}")
         else:
             expected_type = EMPTY_PARAMS[key]
 
-        # Handle different types of expected types
+        # Check the type of the value
         if isinstance(expected_type, type):
-            # Regular type
+            # Simple type
             if not isinstance(value, expected_type):
                 raise TypeError(f"Parameter {key} should be {expected_type}, but got {type(value)}")
-
         elif hasattr(expected_type, '__origin__') and expected_type.__origin__ is Union:
-            # Handle Union types
+            # Union types
             union_args = get_args(expected_type)
-            if not any(isinstance(value, t) for t in union_args if not hasattr(t, '__origin__')):
+            if not any(isinstance(value, t) for t in union_args if isinstance(t, type)):
                 raise TypeError(f"Parameter {key} should be one of {union_args}, but got {type(value)}")
-
-        elif hasattr(expected_type, '__origin__') and expected_type.__origin__ is dict:
-            # Handle Dict types
-            key_type, value_type = get_args(expected_type)
-            if not isinstance(value, dict):
-                raise TypeError(f"Parameter {key} should be a dict, but got {type(value)}")
-            for k, v in value.items():
-                if not isinstance(k, key_type):
-                    raise TypeError(f"Keys in parameter {key} should be {key_type}, but got {type(k)}")
-                if not isinstance(v, value_type):
-                    raise TypeError(f"Values in parameter {key} should be {value_type}, but got {type(v)}")
-
         elif expected_type == npt.ArrayLike:
-            # Handle array-like types
+            # Array-like types
             if not isinstance(value, (list, tuple, np.ndarray)):
                 raise TypeError(f"Parameter {key} should be array-like, but got {type(value)}")
-
         elif expected_type == Callable[..., npt.ArrayLike]:
-            # Handle Callable types
+            # Callable returning ArrayLike
             if not callable(value):
                 raise TypeError(f"Parameter {key} should be callable, but got {type(value)}")
-
+            # Optionally: validate the callable's return type if it can be executed with dummy input
+            try:
+                dummy_output = value()
+                if not isinstance(dummy_output, (list, tuple, np.ndarray)):
+                    raise TypeError(f"Callable for {key} should return array-like, but returned {type(dummy_output)}")
+            except Exception as e:
+                raise ValueError(f"Callable for {key} raised an exception during validation: {e}")
         else:
             raise TypeError(f"Unsupported type for parameter {key}: {expected_type}")
 
