@@ -13,14 +13,14 @@ EMPTY_PARAMS = {
     'word.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
     'image.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
 
-    'var.trial': npt.ArrayLike,
-    'var.question':npt.ArrayLike,
-    'var.subject': npt.ArrayLike,
-    "var.error": Union[int, float],
+    'sd.item': npt.ArrayLike,
+    'sd.question':npt.ArrayLike,
+    'sd.subject': npt.ArrayLike,
+    "sd.error": Union[int, float],
 
     'n.subject': int,
     'n.question': int,
-    'n.trial': int,
+    'n.item': int,
 }
 
 def validate_params(params: dict) -> bool:
@@ -84,6 +84,11 @@ def validate_params(params: dict) -> bool:
                 raise ValueError(f"Callable for {key} raised an exception during validation: {e}")
         else:
             raise TypeError(f"Unsupported type for parameter {key}: {expected_type}")
+        
+        # check that n_questions is equal to length of word.task and image.task
+        if key == 'n.question':
+            if len(params['word.task']) != value or len(params['image.task']) != value:
+                raise ValueError(f"n.question should be equal to length of word.task and image.task")
 
     return True
 
