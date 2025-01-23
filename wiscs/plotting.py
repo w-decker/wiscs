@@ -76,13 +76,13 @@ class Plot(DataGenerator):
                 ax.legend()
             plt.show()
 
-        elif kwargs.get('idx') == 'trial':  
-            rows, cols = nearest_square_dims(self.params["n"]["trial"])
+        elif kwargs.get('idx') == "item":  
+            rows, cols = nearest_square_dims(self.params["n"]["item"])
             fig, axs = plt.subplots(rows, cols, figsize=(cols*5, rows*5))
 
             q = kwargs.get('question_idx')
 
-            for ax, i in zip(axs.flatten(), range(self.params["n"]["trial"])):
+            for ax, i in zip(axs.flatten(), range(self.params["n"]["item"])):
                 ax.hist(self.data[0][:, q, i].ravel(), label='image', alpha=0.5)
                 ax.hist(self.data[1][:, q, i].ravel(), label='word', alpha=0.5)
                 ax.set_title(f'Trial {i+1}')
