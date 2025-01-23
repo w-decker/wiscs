@@ -18,6 +18,9 @@ Install with `pip`:
 pip install git+https://github.com/w-decker/wiscs.git
 ```
 
+>[!WARNING]
+> `wiscs` is _not_ compatible with Google Colab.
+
 ## Usage
 `wiscs` is based on a set of parameters provided by the user. These parameters contain the necessary variables to set up an experiment. 
 
@@ -34,14 +37,14 @@ params = {
     'word.task': ...,
     'image.task': ...,
 
-    'var.item': ...,
-    'var.question': ...,
-    'var.subject': ...,
-    "var.error": ...,
+    'sd.item': ...,
+    'sd.question': ...,
+    'sd.subject': ...,
+    "sd.error": ...,
 
     'n.subject': ...,
     'n.question': ...,
-    'n.trial': ...,
+    'n.item': ...,
 }
 ```
 
