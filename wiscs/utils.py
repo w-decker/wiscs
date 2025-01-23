@@ -3,8 +3,10 @@ import numpy as np
 import numpy.typing as npt
 import math
 
-def make_tasks(low, high, n) -> npt.ArrayLike:
+def make_tasks(low, high, n, seed=None) -> npt.ArrayLike:
     """Generate task parameters"""
+    if seed is not None:
+        np.random.seed(seed)
     return np.random.permutation(np.linspace(low, high, n).round(0))
 
 def deltas(DG:DataGenerator, idx:str) -> npt.ArrayLike:
