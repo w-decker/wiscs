@@ -28,7 +28,7 @@ def generate(params:dict, seed:int=None):
 
     n_subs = params["n"]["subject"]
     n_questions = params["n"]["question"]
-    n_items = params["n"]["trial"]
+    n_items = params["n"]["item"]
 
     w_perceptual = params["word"]["perceptual"]
     w_conceptual = params["word"]["conceptual"]
@@ -39,10 +39,10 @@ def generate(params:dict, seed:int=None):
     i_task = params["image"]["task"]
 
     # variance components
-    sd_question = params["var"]["question"]
-    sd_item = params["var"]["trial"]
-    cov_subject = params["var"]["subject"] # 2 x 2 covariance matrix for subject
-    error = params["var"]["error"]
+    sd_question = params["sd"]["question"]
+    sd_item = params["sd"]["item"]
+    cov_subject = params["sd"]["subject"] # 2 x 2 covariance matrix for subject
+    error = params["sd"]["error"]
 
     # Seed for reproducibility
     np.random.seed(123)
@@ -75,7 +75,7 @@ def generate(params:dict, seed:int=None):
     word = (
         fixed_rt_word          # Fixed components for WORD
         + beta0                # Subject random intercept
-        + slope_q              # Subject random slope effect
+        #+ slope_q              # Subject random slope effect
         + question_effects     # Question random effects
         + item_effects         # Item random effects
         + residual_word        # Residual noise
@@ -84,7 +84,7 @@ def generate(params:dict, seed:int=None):
     image = (
         fixed_rt_image         # Fixed components for IMAGE
         + beta0                # Subject random intercept
-        + slope_q              # Subject random slope effect
+        # + slope_q              # Subject random slope effect
         + question_effects     # Question random effects
         + item_effects         # Item random effects
         + residual_image       # Residual noise
@@ -107,6 +107,12 @@ class DataGenerator(object):
     ----------
     data: npt.ArrayLike | npt.ArrayLike
         Generated data (image, word)
+
+    word: npt.ArrayLike
+        Generated word data
+
+    image: npt.ArrayLike
+        Generated image data
     """ 
 
     def __init__(self):
@@ -124,10 +130,14 @@ class DataGenerator(object):
             elif params is not None and len(params) != len(self.params):
                 self.params = update_params(self.params, params)
                 self.data = generate(self.params, seed=seed)
+                self.word = self.data[0]
+                self.image = self.data[1]
             elif params is not None and len(params) == len(self.params):
                 validate_params(params)
                 self.params = parse_params(params)
                 self.data = generate(self.params, seed=seed)
+                self.word = self.data[0]
+                self.image = self.data[1]
         else:
             if params is not None and len(params) == len(self.params):
                 validate_params(params)
@@ -135,31 +145,35 @@ class DataGenerator(object):
             elif params is not None and len(params) != len(self.params):
                 params = update_params(self.params, params)
                 self.data = generate(params, seed=seed)
+                self.word = self.data[0]
+                self.image = self.data[1]
             else:
                 self.data = generate(self.params, seed=seed)
-
-        return self    
+                self.word = self.data[0]
+                self.image = self.data[1]
+        return self   
     
     def to_pandas(self) -> pd.DataFrame:
         """
         Convert data to pandas DataFrame.
         """
-        # image
-        n_participants, n_questions, n_trials = self.data[0].shape
+        # word
+        n_participants, n_questions, n_items = self.word.shape
         word_df = pd.DataFrame({
-            "subject": np.repeat(np.arange(n_participants), n_questions * n_trials),
+            "subject": np.repeat(np.arange(n_participants), n_questions * n_items),
             "rt": self.data[0].flatten(),
-            "question": np.tile(np.repeat(np.arange(n_questions), n_trials), n_participants),
-            "item": np.tile(np.arange(n_trials), n_participants * n_questions),
+            "question": np.tile(np.repeat(np.arange(n_questions), n_items), n_participants),
+            "item": np.tile(np.arange(n_items), n_participants * n_questions),
             "modality": "image"
         })
 
-        # word
+        # image
+        n_participants, n_questions, n_items = self.image.shape
         image_df = pd.DataFrame({
-            "subject": np.repeat(np.arange(self.data[1].shape[0]), n_questions * n_trials),
+            "subject": np.repeat(np.arange(self.data[1].shape[0]), n_questions * n_items),
             "rt": self.data[1].flatten(),
-            "question": np.tile(np.repeat(np.arange(n_questions), n_trials), self.data[1].shape[0]),
-            "item": np.tile(np.arange(n_trials), n_participants * n_questions),
+            "question": np.tile(np.repeat(np.arange(n_questions), n_items), self.data[1].shape[0]),
+            "item": np.tile(np.arange(n_items), n_participants * n_questions),
             "modality": "word"
         })
 
