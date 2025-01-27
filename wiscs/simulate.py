@@ -12,10 +12,14 @@ import numpy as np
 import warnings
 import numpy.typing as npt
 
-MODALITIES = ["word", "image"]
+import numpy as np
+from typing import Union
+import numpy.typing as npt
 
-def _random_effects(sigma:npt.ArrayLike, size:Union[int, tuple], mean:npt.ArrayLike=[0, 0]) -> npt.ArrayLike:
-    """Generate random effects"""
+def _random_effects(sigma:npt.ArrayLike,
+                    size:Union[int, tuple],
+                    mean:npt.ArrayLike = [0, 0]) -> npt.ArrayLike:
+    """Generate correlated random intercepts and slopes."""
     v = np.random.multivariate_normal(mean, sigma, size)
     intercept = v[:, 0]
     slope = v[:, 1]
@@ -23,13 +27,12 @@ def _random_effects(sigma:npt.ArrayLike, size:Union[int, tuple], mean:npt.ArrayL
 
 def generate(params:dict, seed:int=None):
 
-    if seed is not None:
-        np.random.seed(seed)
-
+    # Number of subjects, questions, items
     n_subs = params["n"]["subject"]
     n_questions = params["n"]["question"]
     n_items = params["n"]["item"]
 
+    # Fixed effects components (example parameters)
     w_perceptual = params["word"]["perceptual"]
     w_conceptual = params["word"]["conceptual"]
     w_task = params["word"]["task"]
@@ -38,56 +41,63 @@ def generate(params:dict, seed:int=None):
     i_conceptual = params["image"]["conceptual"]
     i_task = params["image"]["task"]
 
-    # variance components
+    # Variance components
     sd_question = params["sd"]["question"]
     sd_item = params["sd"]["item"]
-    cov_subject = params["sd"]["subject"] # 2 x 2 covariance matrix for subject
+    sd_subject = params["sd"]["subject"]  # 2 x 2 covariance matrix
     error = params["sd"]["error"]
 
-    # Seed for reproducibility
-    np.random.seed(123)
+    if seed is not None:
+        np.random.seed(seed)
 
-    # generate variance structures
-    beta0, beta1 = _random_effects(cov_subject, n_subs) # random slope and intercept for subjects
-    question_effects = np.random.normal(0, sd_question, n_questions)
-    item_effects = np.random.normal(0, sd_item, n_items)
+    # Random effects for subjects: random intercept & slope for question
+    if isinstance(sd_subject, (int, float)):
+        beta0 = np.random.normal(0, sd_subject, n_subs)
+        beta1 = np.zeros(n_subs)
+    else:
+        beta0, beta1 = _random_effects(sd_subject, n_subs)
+
+    # Random intercepts for question
+    question_effects = np.random.normal(0, sd_question, n_questions) if sd_question is not None else np.zeros(n_questions)
+
+    # Random intercepts for item
+    item_effects = np.random.normal(0, sd_item, n_items) if sd_item is not None else np.zeros(n_items)
 
     # fixed RT without noise
     fixed_rt_word = w_perceptual + w_conceptual + w_task
     fixed_rt_image = i_perceptual + i_conceptual + i_task
 
     # reshape
-    beta0 = beta0[:, np.newaxis, np.newaxis]
-    beta1 = beta1[:, np.newaxis, np.newaxis]
-    fixed_rt_word = fixed_rt_word[np.newaxis, :, np.newaxis]
-    fixed_rt_image = fixed_rt_image[np.newaxis, :, np.newaxis]
-    question_effects = question_effects[np.newaxis, :, np.newaxis]
-    item_effects = item_effects[np.newaxis, np.newaxis, :]
-    q_indices = np.arange(1, n_questions + 1).reshape(1, n_questions, 1)
+    beta0 = beta0[:, np.newaxis, np.newaxis]           # (n_subs, 1, 1)
+    beta1 = beta1[:, np.newaxis, np.newaxis]           # (n_subs, 1, 1)
+    fixed_rt_word = fixed_rt_word[np.newaxis, :, np.newaxis]  # (1, n_questions, 1)
+    fixed_rt_image = fixed_rt_image[np.newaxis, :, np.newaxis] # (1, n_questions, 1)
+    question_effects = question_effects[np.newaxis, :, np.newaxis]    # (1, n_questions, 1)
+    item_effects = item_effects[np.newaxis, np.newaxis, :]  #(1, 1, n_items)
 
     # slope
-    slope_q = beta1 * q_indices
+    slope_q = beta1
 
-    # residual/error
+    # residual error
     residual_word = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
     residual_image = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
 
     word = (
-        fixed_rt_word          # Fixed components for WORD
-        + beta0                # Subject random intercept
-        #+ slope_q              # Subject random slope effect
-        + question_effects     # Question random effects
-        + item_effects         # Item random effects
-        + residual_word        # Residual noise
+        fixed_rt_word      # fixed effects for WORD
+        + beta0            # random intercept by subject
+        + slope_q          # random slope of question by subject
+        + question_effects # random intercept for question
+        + item_effects     # random intercept for item
+        + residual_word    # residual noise
     )
 
     image = (
-        fixed_rt_image         # Fixed components for IMAGE
-        + beta0                # Subject random intercept
-        # + slope_q              # Subject random slope effect
-        + question_effects     # Question random effects
-        + item_effects         # Item random effects
-        + residual_image       # Residual noise
+        fixed_rt_image     # fixed effects for IMAGE
+        + beta0            # random intercept by subject
+        + slope_q          # random slope of question by subject
+        + question_effects # random intercept for question
+        + item_effects     # random intercept for item
+        + residual_image   # residual noise
     )
 
     return word, image
