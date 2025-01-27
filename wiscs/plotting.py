@@ -106,7 +106,7 @@ class Plot(DataGenerator):
                 ax.legend()
             plt.show()
             
-    def plot_bargraph(self, show_interaction:bool, title: str, hypothesis_title:str):
+    def plot_bargraph(self, show_interaction:bool, title: str, hypothesis_title:str, point_alpah:float=0.2, point_size:int=1):
     
         df = self.DG.to_pandas()
         
@@ -183,7 +183,7 @@ class Plot(DataGenerator):
 
             sns.stripplot(
                 x='question', y='rt', hue='modality', data=df, ax=plt.gca(),
-                dodge=True, palette=colors, alpha=0.2, size=1, legend=False)
+                dodge=True, palette=colors, alpha=point_alpah, size=point_size, legend=False)
             
             # Adjust legend placement
             plt.title(title, fontsize=16, y=1.07)
