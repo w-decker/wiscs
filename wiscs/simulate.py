@@ -75,6 +75,10 @@ def generate(params:dict, seed:int=None):
     question_effects = question_effects[np.newaxis, :, np.newaxis]    # (1, n_questions, 1)
     item_effects = item_effects[np.newaxis, np.newaxis, :]  #(1, 1, n_items)
 
+    # slope
+    q_indices = np.arange(n_questions)/n_questions # keep small by squeezing between 0 and 1
+    slope_q = beta1 * q_indices  # random slope by question
+
     # residual error
     residual_word = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
     residual_image = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
@@ -82,7 +86,7 @@ def generate(params:dict, seed:int=None):
     word = (
         fixed_rt_word      # fixed effects for WORD
         + beta0            # random intercept by subject
-        + beta1            # random slope of question by subject
+        + slope_q          # random slope of question by subject
         + question_effects # random intercept for question
         + item_effects     # random intercept for item
         + residual_word    # residual noise
@@ -91,7 +95,7 @@ def generate(params:dict, seed:int=None):
     image = (
         fixed_rt_image     # fixed effects for IMAGE
         + beta0            # random intercept by subject
-        + beta1            # random slope of question by subject
+        + slope_q          # random slope of question by subject
         + question_effects # random intercept for question
         + item_effects     # random intercept for item
         + residual_image   # residual noise
