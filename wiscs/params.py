@@ -13,9 +13,9 @@ EMPTY_PARAMS = {
     'word.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
     'image.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
 
-    'sd.item': npt.ArrayLike,
-    'sd.question':npt.ArrayLike,
-    'sd.subject': npt.ArrayLike,
+    'sd.item': Union[npt.ArrayLike,None],
+    'sd.question':Union[npt.ArrayLike,None],
+    'sd.subject': Union[npt.ArrayLike, None, int, float],
     "sd.error": Union[int, float],
 
     'n.subject': int,
