@@ -6,7 +6,7 @@ from .utils import *
 
 import sys
 
-def set_params(params: dict = None, return_empty=False):
+def set_params(params:dict=None, return_empty=False, verbose:bool=True):
     """Set data parameters"""
 
     if params is None and return_empty:
@@ -18,4 +18,5 @@ def set_params(params: dict = None, return_empty=False):
         raise ValueError("If params is provided, return_empty must be False")
     elif validate_params(params):
         config.p = parse_params(params)
-        print("Params set successfully")
+        if verbose:
+            print("Params set successfully")
