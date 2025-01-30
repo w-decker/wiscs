@@ -77,8 +77,9 @@ def generate(params:dict, seed:int=None):
 
     # slope
     q_indices = np.arange(n_questions)/n_questions # keep small by squeezing between 0 and 1
+    q_indices = q_indices.reshape(1, n_questions, 1) # shape: (1, n_questions, 1)
     slope_q = beta1 * q_indices  # random slope by question
-
+    
     # residual error
     residual_word = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
     residual_image = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
