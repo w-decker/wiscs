@@ -5,11 +5,7 @@ $$
 S = C + \epsilon
 $$
 
-However, reaction times across subjects and factors must also be taken into account. Data are modeled 1) as a fully crossed design (all subjects see all levels of the experiment), 2) under the assumption that each `subject`, `question`, and `item` have a random intercept and 3) that `question` and `item` have a random intecept with respect to `subject`. A an example formula for these data is below:
-
-```r
-reaction time ~ modality + question + (1 + item + question | subject) + (1|item) + (1|question)
-```
+However, reaction times across subjects and factors must also be taken into account. Data can be modeled 1) as a fully crossed design (all subjects see all levels of the experiment), 2) under the assumption that each `subject`, `question`, and `item` have a random intercept and 3) that `question` and `item` have a random intecept with respect to `subject`. Additional customizations are available.
 
 ## Installation 
 
