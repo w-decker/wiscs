@@ -54,6 +54,9 @@ def generate(params:dict, seed:int=None):
     if isinstance(sd_subject, (int, float)):
         beta0 = np.random.normal(0, sd_subject, n_subs)
         beta1 = np.zeros(n_subs)
+    elif sd_subject is None:
+        beta0 = np.zeros(n_subs)
+        beta1 = np.zeros(n_subs)
     else:
         beta0, beta1 = _random_effects(sd_subject, n_subs)
 
@@ -81,8 +84,8 @@ def generate(params:dict, seed:int=None):
     slope_q = beta1 * q_indices  # random slope by question
     
     # residual error
-    residual_word = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
-    residual_image = np.random.normal(0, error, size=(n_subs, n_questions, n_items))
+    residual_word = np.random.normal(0, error, size=(n_subs, n_questions, n_items)) if error is not None else np.zeros((n_subs, n_questions, n_items))
+    residual_image = np.random.normal(0, error, size=(n_subs, n_questions, n_items)) if error is not None else np.zeros((n_subs, n_questions, n_items))
 
     word = (
         fixed_rt_word      # fixed effects for WORD

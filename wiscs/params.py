@@ -16,7 +16,7 @@ EMPTY_PARAMS = {
     'sd.item': Union[npt.ArrayLike,None],
     'sd.question':Union[npt.ArrayLike,None],
     'sd.subject': Union[npt.ArrayLike, None, int, float],
-    "sd.error": Union[int, float],
+    "sd.error": Union[int, float, None],
 
     'n.subject': int,
     'n.question': int,
