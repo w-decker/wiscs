@@ -8,14 +8,6 @@ import pandas as pd
 import copy
 from typing import Union
 
-import numpy as np
-import warnings
-import numpy.typing as npt
-
-import numpy as np
-from typing import Union
-import numpy.typing as npt
-
 def _random_effects(sigma:npt.ArrayLike,
                     size:Union[int, tuple],
                     mean:npt.ArrayLike = [0, 0]) -> npt.ArrayLike:
