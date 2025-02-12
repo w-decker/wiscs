@@ -43,8 +43,8 @@ def generate(params:dict, seed:int=None):
 
     # Variance components
     sd_question = params["sd"]["question"]
-    sd_item = params["sd"]["item"]
-    sd_subject = params["sd"]["subject"]  # 2 x 2 covariance matrix
+    sd_item = params["sd"]["item"] # could take None, int, float, np.ndarray [2x2 var-cov matrix]
+    sd_subject = params["sd"]["subject"]  # could take None, int, float, np.ndarray [2x2 var-cov matrix]
     error = params["sd"]["error"]
 
     if seed is not None:
@@ -52,57 +52,73 @@ def generate(params:dict, seed:int=None):
 
     # Random effects for subjects: random intercept & slope for question
     if isinstance(sd_subject, (int, float)):
-        beta0 = np.random.normal(0, sd_subject, n_subs)
-        beta1 = np.zeros(n_subs)
+        q_intercept = np.random.normal(0, sd_subject, n_subs)
+        q_slope = np.zeros(n_subs)
     elif sd_subject is None:
-        beta0 = np.zeros(n_subs)
-        beta1 = np.zeros(n_subs)
+        q_intercept = np.zeros(n_subs)
+        q_slope = np.zeros(n_subs)
     else:
-        beta0, beta1 = _random_effects(sd_subject, n_subs)
+        q_intercept, q_slope = _random_effects(sd_subject, n_subs)
+
+    # Random intercepts and slopes for items
+    if isinstance(sd_item, (int, float)):
+        item_effects = np.random.normal(0, sd_item, n_items)
+        i_slope = np.zeros(n_items)
+    elif sd_item is None:
+        item_effects = np.zeros(n_items)
+        i_slope = np.zeros(n_items)
+    elif isinstance(sd_item, np.ndarray) and sd_item.shape == (2, 2):
+        item_effects, i_slope = _random_effects(sd_item, n_items)
+    else:
+        raise ValueError("sd_item must be None, a scalar, or a 2x2 covariance matrix.")
 
     # Random intercepts for question
     question_effects = np.random.normal(0, sd_question, n_questions) if sd_question is not None else np.zeros(n_questions)
 
-    # Random intercepts for item
-    item_effects = np.random.normal(0, sd_item, n_items) if sd_item is not None else np.zeros(n_items)
-
-    # fixed RT without noise
+    # Fixed RT without noise
     fixed_rt_word = w_perceptual + w_conceptual + w_task
     fixed_rt_image = i_perceptual + i_conceptual + i_task
 
-    # reshape
-    beta0 = beta0[:, np.newaxis, np.newaxis]           # (n_subs, 1, 1)
-    beta1 = beta1[:, np.newaxis, np.newaxis]           # (n_subs, 1, 1)
+    # Reshape for broadcasting
+    q_intercept = q_intercept[:, np.newaxis, np.newaxis]  # (n_subs, 1, 1)
+    q_slope = q_slope[:, np.newaxis, np.newaxis]  # (n_subs, 1, 1)
     fixed_rt_word = fixed_rt_word[np.newaxis, :, np.newaxis]  # (1, n_questions, 1)
-    fixed_rt_image = fixed_rt_image[np.newaxis, :, np.newaxis] # (1, n_questions, 1)
-    question_effects = question_effects[np.newaxis, :, np.newaxis]    # (1, n_questions, 1)
-    item_effects = item_effects[np.newaxis, np.newaxis, :]  #(1, 1, n_items)
+    fixed_rt_image = fixed_rt_image[np.newaxis, :, np.newaxis]  # (1, n_questions, 1)
+    question_effects = question_effects[np.newaxis, :, np.newaxis]  # (1, n_questions, 1)
+    item_effects = item_effects[np.newaxis, np.newaxis, :]  # (1, 1, n_items)
 
-    # slope
-    q_indices = np.arange(n_questions)/n_questions # keep small by squeezing between 0 and 1
-    q_indices = q_indices.reshape(1, n_questions, 1) # shape: (1, n_questions, 1)
-    slope_q = beta1 * q_indices  # random slope by question
-    
-    # residual error
+    # Apply slope effects
+    q_indices = np.arange(n_questions) / n_questions
+    q_indices = q_indices.reshape(1, n_questions, 1)  # Shape: (1, n_questions, 1)
+    q_slope = q_slope * q_indices  # Random slope for question
+
+    i_indices = np.arange(n_items) / n_items
+    i_indices = i_indices.reshape(1, 1, n_items)  # Shape: (1, 1, n_items)
+    i_slope = i_slope * i_indices  # Random slope for modality by item
+
+    # Residual error
     residual_word = np.random.normal(0, error, size=(n_subs, n_questions, n_items)) if error is not None else np.zeros((n_subs, n_questions, n_items))
     residual_image = np.random.normal(0, error, size=(n_subs, n_questions, n_items)) if error is not None else np.zeros((n_subs, n_questions, n_items))
 
+    # Generate word and image data
     word = (
-        fixed_rt_word      # fixed effects for WORD
-        + beta0            # random intercept by subject
-        + slope_q          # random slope of question by subject
-        + question_effects # random intercept for question
-        + item_effects     # random intercept for item
-        + residual_word    # residual noise
+        fixed_rt_word
+        + q_intercept
+        + q_slope
+        + i_slope
+        + question_effects
+        + item_effects
+        + residual_word
     )
 
     image = (
-        fixed_rt_image     # fixed effects for IMAGE
-        + beta0            # random intercept by subject
-        + slope_q          # random slope of question by subject
-        + question_effects # random intercept for question
-        + item_effects     # random intercept for item
-        + residual_image   # residual noise
+        fixed_rt_image
+        + q_intercept
+        + q_slope
+        + i_slope
+        + question_effects
+        + item_effects
+        + residual_image
     )
 
     return word, image
