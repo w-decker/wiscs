@@ -5,7 +5,7 @@ $$
 S = C + \epsilon
 $$
 
-However, reaction times across subjects and factors must also be taken into account. Data can be modeled 1) as a fully crossed design (all subjects see all levels of the experiment), 2) under the assumption that each `subject`, `question`, and `item` have a random intercept and 3) that `question` and `item` have a random intecept with respect to `subject`. Additional customizations are available.
+However, reaction times across subjects and factors must also be taken into account. Data can be modeled with random effects for various factors by providing an `re_formula` and correlation matrices. 
 
 ## Installation 
 
@@ -36,7 +36,10 @@ params = {
     'sd.item': ...,
     'sd.question': ...,
     'sd.subject': ...,
-    "sd.error": ...,
+    'sd.error': ...,
+    'sd.re_formula':...,
+
+    'corr.{factor}':...,
 
     'n.subject': ...,
     'n.question': ...,
@@ -59,8 +62,8 @@ You can also grab a template `params` using the same function. It will return a 
 template = wiscs.set_params(return_empty=True)
 ```
 ```
->>> Params must be a dictionary with the following keys:
- dict_keys(['word.concept', 'image.concept', 'word.task', 'image.task', 'var.image', 'var.word', 'var.question', 'var.participant', 'n.participant', 'n.question', 'n.trial'])
+Params must be a dictionary with the following keys:
+ dict_keys(['word.perceptual', 'image.perceptual', 'word.conceptual', 'image.conceptual', 'word.task', 'image.task', 'sd.item', 'sd.question', 'sd.subject', 'sd.modality', 'sd.re_formula', 'sd.error', 'corr.subject', 'corr.question', 'corr.item', 'corr.modality', 'n.subject', 'n.question', 'n.item'])
 ```
 Printing `template` will tell you the expected types for each parameter. 
 
@@ -104,10 +107,11 @@ You can also plot the data with some default plotting functionality, including s
 ```python
 from wiscs.plotting import Plot
 P = Plot(DG)
-P.grid(idx='question') # must index on an experimental variable
+P.plot_bargraph()
 ```
 
-For more plotting details, see the notebook [here](https://github.com/w-decker/wiscs-simulation/blob/main/wiscs-simulations.ipynb).
+## A note on how data are generated
+Data generation begins with constructing a baseline matrix, which represents the expected reaction times before introducing variability. This matrix is built from predefined perceptual, conceptual, and task-related parameters, fully crossing subjects, questions, items, and modalities. Next, random effects are introduced to account for variability across subjects, questions, and items (if the user wishes). These effects are drawn from multivariate normal distributions, where correlation structures among effects are preserved using Cholesky decomposition. Cholesky decomposition factorizes the covariance matrix into a lower triangular matrix, which allows us to efficiently generate correlated random deviations by multiplying it with standard normal samples. These structured deviations are then added to the baseline matrix, along with residual noise, to produce the final dataset, ensuring that both systematic and random variability reflect realistic experimental conditions.
 
 ## Contributing
 Please submit issues or PRs with detailed information. Feel free to contact me [here](mailto:will.decker@gatech.edu?subject=wiscs).
