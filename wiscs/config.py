@@ -1,5 +1,4 @@
 """
 Configuartion variables
 """
-
 p = None
