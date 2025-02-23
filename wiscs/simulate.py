@@ -1,119 +1,184 @@
+import numpy as np
+from typing import Union
+import copy
+import warnings
+import pandas as pd
+
+from .formula import Formula
 from . import config
 from .params import validate_params, parse_params, update_params
 
-import numpy as np
-import warnings
-import numpy.typing as npt
-import pandas as pd
-import copy
-from typing import Union
+def calculate_baseline(params:dict):
+    """Calculate baseline based on parameters"""
 
-def _random_effects(sigma:npt.ArrayLike,
-                    size:Union[int, tuple],
-                    mean:npt.ArrayLike = [0, 0]) -> npt.ArrayLike:
-    """Generate correlated random intercepts and slopes."""
-    v = np.random.multivariate_normal(mean, sigma, size)
-    intercept = v[:, 0]
-    slope = v[:, 1]
-    return intercept, slope
+    def create_matrix(rt, task):
+        matrix = np.full((params["n"]["subject"], params["n"]["question"], params["n"]["item"]), rt)
+        task = task[np.newaxis, :, np.newaxis]
+        return matrix + task
+
+    word_rt = params['word']['perceptual'] + params['word']['conceptual']
+    image_rt = params['image']['perceptual'] + params['image']['conceptual']
+
+    word_matrix = create_matrix(word_rt, params["word"]["task"])
+    image_matrix = create_matrix(image_rt, params["image"]["task"])
+
+    return np.stack((word_matrix, image_matrix), axis=3)
+
+def generate_correlated_effects(n:int, 
+                                sd_values:Union[list[int], list[float], np.ndarray], 
+                                corr_matrix: Union[np.ndarray, list[list]]):
+    """
+    Generates correlated random effects using a multivariate normal distribution 
+    and Cholesky decomposition.
+
+    Parameters
+    ----------
+    n:int 
+    sd_values: list
+    corr_matrix: Union[np.ndarray, list[list]].
+
+    Return
+    -------
+    np.ndarray: A (n, len(sd_values)) array of random effects.
+    """
+    # transform correlation matrix to covariance matrix
+    sd_diag = np.diag(sd_values)
+    cov_matrix = sd_diag @ np.array(corr_matrix) @ sd_diag  # Covariance matrix
+
+    # RE matrix using Cholesky decomposition
+    L = np.linalg.cholesky(cov_matrix)
+    z = np.random.randn(n, len(sd_values))  # Independent standard normal samples
+
+    return z @ L.T
+
+def make_random_effects(params:dict):
+    """
+    Generates random effects strucrure based on the formula specified in the parameters.
+    """
+    re_formula = params["sd"].get("re_formula")
+    if not re_formula:
+        raise ValueError("Missing 'sd.re_formula'")
+
+    formula = Formula(re_formula)
+    random_effects = {}
+
+    for term in formula:
+        content = term.strip("()")
+        lhs, group = content.split("|")
+        lhs = lhs.strip()
+        group = group.strip()
+
+        n_key = f"{group}"
+        if n_key not in params["n"]:
+            raise ValueError(f"Missing 'n.{n_key}' for grouping factor '{group}'.")
+
+        # get intercept and slopes
+        predictors = [t.strip() for t in lhs.split("+")]
+        has_intercept = "1" in predictors
+        slopes = [p for p in predictors if p != "1"]
+
+        # ordered list of effects: [intercept, slopes]
+        effect_names = ["intercept"] if has_intercept else []
+        effect_names.extend(slopes)
+
+        # get sd
+        sd_values = [params["sd"].get(group, 0) if has_intercept else 0]
+        sd_values.extend([params["sd"].get(k, 0) for k in slopes])
+
+        # get correlations
+        corr_matrix = np.eye(len(sd_values))
+        if group in params["corr"] and len(params["corr"][group]) == len(sd_values):
+            corr_matrix = np.array(params["corr"][group])
+
+        # create random effects
+        random_effects[group] = generate_correlated_effects(params["n"][n_key], sd_values, corr_matrix)
+
+    return random_effects
 
 def generate(params:dict, seed:int=None):
-
-    # Number of subjects, questions, items
-    n_subs = params["n"]["subject"]
-    n_questions = params["n"]["question"]
-    n_items = params["n"]["item"]
-
-    # Fixed effects components (example parameters)
-    w_perceptual = params["word"]["perceptual"]
-    w_conceptual = params["word"]["conceptual"]
-    w_task = params["word"]["task"]
-
-    i_perceptual = params["image"]["perceptual"]
-    i_conceptual = params["image"]["conceptual"]
-    i_task = params["image"]["task"]
-
-    # Variance components
-    sd_question = params["sd"]["question"]
-    sd_item = params["sd"]["item"] # could take None, int, float, np.ndarray [2x2 var-cov matrix]
-    sd_subject = params["sd"]["subject"]  # could take None, int, float, np.ndarray [2x2 var-cov matrix]
-    error = params["sd"]["error"]
-
+    """
+    Generate data
+    
+    Returns
+    -------
+    np.ndarray: A (subjects, questions, items, modalities) matrix containing simulated RT values.
+    """
     if seed is not None:
         np.random.seed(seed)
 
-    # Random effects for subjects: random intercept & slope for question
-    if isinstance(sd_subject, (int, float)):
-        q_intercept = np.random.normal(0, sd_subject, n_subs)
-        q_slope = np.zeros(n_subs)
-    elif sd_subject is None:
-        q_intercept = np.zeros(n_subs)
-        q_slope = np.zeros(n_subs)
-    else:
-        q_intercept, q_slope = _random_effects(sd_subject, n_subs)
+    B = calculate_baseline(params)
 
-    # Random intercepts and slopes for items
-    if isinstance(sd_item, (int, float)):
-        item_effects = np.random.normal(0, sd_item, n_items)
-        i_slope = np.zeros(n_items)
-    elif sd_item is None:
-        item_effects = np.zeros(n_items)
-        i_slope = np.zeros(n_items)
-    elif isinstance(sd_item, np.ndarray) and sd_item.shape == (2, 2):
-        item_effects, i_slope = _random_effects(sd_item, n_items)
-    else:
-        raise ValueError("sd_item must be None, a scalar, or a 2x2 covariance matrix.")
+    # create random effects
+    random_effects = make_random_effects(params)
 
-    # Random intercepts for question
-    question_effects = np.random.normal(0, sd_question, n_questions) if sd_question is not None else np.zeros(n_questions)
+    n_subj, n_q, n_item, n_mod = B.shape 
 
-    # Fixed RT without noise
-    fixed_rt_word = w_perceptual + w_conceptual + w_task
-    fixed_rt_image = i_perceptual + i_conceptual + i_task
+    # get fixed effects
+    modality_code = np.array([0, 1]).reshape(1, 1, 1, n_mod)  # 0 for word, 1 for image
+    question_code = (np.arange(n_q) - np.mean(np.arange(n_q))).reshape(1, n_q, 1, 1)  # Centered
 
-    # Reshape for broadcasting
-    q_intercept = q_intercept[:, np.newaxis, np.newaxis]  # (n_subs, 1, 1)
-    q_slope = q_slope[:, np.newaxis, np.newaxis]  # (n_subs, 1, 1)
-    fixed_rt_word = fixed_rt_word[np.newaxis, :, np.newaxis]  # (1, n_questions, 1)
-    fixed_rt_image = fixed_rt_image[np.newaxis, :, np.newaxis]  # (1, n_questions, 1)
-    question_effects = question_effects[np.newaxis, :, np.newaxis]  # (1, n_questions, 1)
-    item_effects = item_effects[np.newaxis, np.newaxis, :]  # (1, 1, n_items)
+    total_contrib = np.zeros_like(B)
 
-    # Apply slope effects
-    q_indices = np.arange(n_questions) / n_questions
-    q_indices = q_indices.reshape(1, n_questions, 1)  # Shape: (1, n_questions, 1)
-    q_slope = q_slope * q_indices  # Random slope for question
+    # insert random effects 
+    formula = Formula(params["sd"]["re_formula"])  # Parse the formula
+    for term in formula:
 
-    i_indices = np.arange(n_items) / n_items
-    i_indices = i_indices.reshape(1, 1, n_items)  # Shape: (1, 1, n_items)
-    i_slope = i_slope * i_indices  # Random slope for modality by item
+        # Extract structure: (effects | grouping factor)
+        content = term.strip("()")
+        lhs, group = content.split("|")
+        lhs = lhs.strip()
+        group = group.strip()
 
-    # Residual error
-    residual_word = np.random.normal(0, error, size=(n_subs, n_questions, n_items)) if error is not None else np.zeros((n_subs, n_questions, n_items))
-    residual_image = np.random.normal(0, error, size=(n_subs, n_questions, n_items)) if error is not None else np.zeros((n_subs, n_questions, n_items))
+        # Ensure we have the number of levels for this grouping factor
+        n_levels = params["n"].get(f"{group}", None)
+        if n_levels is None:
+            raise ValueError(f"Missing `n.{group}` for grouping factor '{group}'.")
 
-    # Generate word and image data
-    word = (
-        fixed_rt_word
-        + q_intercept
-        + q_slope
-        + i_slope
-        + question_effects
-        + item_effects
-        + residual_word
-    )
+        # Get the random effect matrix for this factor
+        re_matrix = random_effects.get(group, None)
+        if re_matrix is None:
+            continue  # Skip if no random effects for this factor
 
-    image = (
-        fixed_rt_image
-        + q_intercept
-        + q_slope
-        + i_slope
-        + question_effects
-        + item_effects
-        + residual_image
-    )
+        effect_names = lhs.split("+")
+        effect_names = [e.strip() for e in effect_names]
 
-    return word, image
+        # Initialize contribution per factor
+        factor_contrib = np.zeros_like(B)
+
+        # Broadcast effects
+        effect_idx = 0
+        for term in effect_names:
+            if term == "1":
+                # Random intercept
+                if group == "subject":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(n_levels, 1, 1, 1)
+                elif group == "question":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(1, n_levels, 1, 1)
+                elif group == "item":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(1, 1, n_levels, 1)
+            elif term == "modality":
+                if group == "subject":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(n_levels, 1, 1, 1) * modality_code
+                elif group == "question":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(1, n_levels, 1, 1) * modality_code
+                elif group == "item":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(1, 1, n_levels, 1) * modality_code
+            elif term == "question":
+                if group == "subject":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(n_levels, 1, 1, 1) * question_code
+                elif group == "question":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(1, n_levels, 1, 1) * question_code
+                elif group == "item":
+                    factor_contrib += re_matrix[:, effect_idx].reshape(1, 1, n_levels, 1) * question_code
+            effect_idx += 1
+
+        # Add contribution to total
+        total_contrib += factor_contrib
+
+    # add residual
+    residual_noise = np.random.normal(0, params["sd"]["error"], size=B.shape)
+
+    return B + total_contrib + residual_noise
 
 class DataGenerator(object):
     """Data generator
@@ -153,14 +218,14 @@ class DataGenerator(object):
             elif params is not None and len(params) != len(self.params):
                 self.params = update_params(self.params, params)
                 self.data = generate(self.params, seed=seed)
-                self.word = self.data[0]
-                self.image = self.data[1]
+                self.word = self.data[:, :, :, 0]
+                self.image = self.data[:, :, :, 1]
             elif params is not None and len(params) == len(self.params):
                 validate_params(params)
                 self.params = parse_params(params)
                 self.data = generate(self.params, seed=seed)
-                self.word = self.data[0]
-                self.image = self.data[1]
+                self.word = self.data[:, :, :, 0]
+                self.image = self.data[:, :, :, 1]
         else:
             if params is not None and len(params) == len(self.params):
                 validate_params(params)
@@ -168,12 +233,12 @@ class DataGenerator(object):
             elif params is not None and len(params) != len(self.params):
                 params = update_params(self.params, params)
                 self.data = generate(params, seed=seed)
-                self.word = self.data[0]
-                self.image = self.data[1]
+                self.word = self.data[:, :, :, 0]
+                self.image = self.data[:, :, :, 1]
             else:
                 self.data = generate(self.params, seed=seed)
-                self.word = self.data[0]
-                self.image = self.data[1]
+                self.word = self.data[:, :, :, 0]
+                self.image = self.data[:, :, :, 1]
         return self   
     
     def to_pandas(self) -> pd.DataFrame:
@@ -184,20 +249,20 @@ class DataGenerator(object):
         n_participants, n_questions, n_items = self.word.shape
         word_df = pd.DataFrame({
             "subject": np.repeat(np.arange(n_participants), n_questions * n_items),
-            "rt": self.data[0].flatten(),
+            "rt": self.word.flatten(),
             "question": np.tile(np.repeat(np.arange(n_questions), n_items), n_participants),
             "item": np.tile(np.arange(n_items), n_participants * n_questions),
-            "modality": "image"
+            "modality": "word"
         })
 
         # image
         n_participants, n_questions, n_items = self.image.shape
         image_df = pd.DataFrame({
-            "subject": np.repeat(np.arange(self.data[1].shape[0]), n_questions * n_items),
-            "rt": self.data[1].flatten(),
-            "question": np.tile(np.repeat(np.arange(n_questions), n_items), self.data[1].shape[0]),
+            "subject": np.repeat(np.arange(self.image.shape[0]), n_questions * n_items),
+            "rt": self.image.flatten(),
+            "question": np.tile(np.repeat(np.arange(n_questions), n_items), n_participants),
             "item": np.tile(np.arange(n_items), n_participants * n_questions),
-            "modality": "word"
+            "modality": "image"
         })
 
         # concatenate
