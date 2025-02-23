@@ -3,6 +3,8 @@ from .params import *
 from .simulate import *
 from . import config
 from .utils import *
+from .formula import *
+from .plotting import * 
 
 import sys
 
