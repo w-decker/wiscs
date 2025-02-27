@@ -13,10 +13,10 @@ EMPTY_PARAMS = {
     'word.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
     'image.task': Union[npt.ArrayLike, Callable[..., npt.ArrayLike]],
 
-    'sd.item': Union[npt.ArrayLike, None, int, float, dict],
-    'sd.question': Union[npt.ArrayLike, None, int, float, dict],
-    'sd.subject': Union[npt.ArrayLike, None, int, float, dict],
-    'sd.modality': Union[npt.ArrayLike, None, int, float, dict],
+    'sd.item': Union[npt.ArrayLike, None, int, float, dict, list],
+    'sd.question': Union[npt.ArrayLike, None, int, float, dict, list],
+    'sd.subject': Union[npt.ArrayLike, None, int, float, dict, list],
+    'sd.modality': Union[npt.ArrayLike, None, int, float, dict, list],
     'sd.re_formula':str,
     "sd.error": Union[int, float, None],
 
