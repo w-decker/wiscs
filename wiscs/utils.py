@@ -1,9 +1,6 @@
-# from .simulate import DataGenerator
 import numpy as np
 import numpy.typing as npt
 import math
-from typing import Union
-import ast
 
 def make_tasks(low, high, n, seed=None) -> npt.ArrayLike:
     """Generate task parameters"""
