@@ -3,7 +3,7 @@ from .params import *
 from .simulate import *
 from . import config
 from .utils import *
-from .formula import *
+from .formula import Formula
 from .plotting import * 
 
 import sys
@@ -22,3 +22,10 @@ def set_params(params:dict=None, return_empty=False, verbose:bool=True):
         config.p = parse_params(params)
         if verbose:
             print("Params set successfully")
+
+def set_re_method(method:str):
+    """Set the method for generating random effects"""
+    if method in ["cholesky", "eigen"]:
+        config.re_method = method
+    else:
+        raise ValueError("Method must be 'cholesky' or 'eigen'")
