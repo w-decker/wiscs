@@ -336,16 +336,17 @@ class DataGenerator(object):
         self.word = None
         self.image = None
 
-    def fit_transform(self, params: dict = None, overwrite: bool = False, seed: int = None):
+    def fit_transform(self, params: dict = None, overwrite: bool = False, seed: int = None, verbose: bool = False):
         """
         Generate data based on the current (or new) params. 
         If overwrite=True, we replace self.params with new ones.
         If not, we only partially update them or keep them as is.
         """
-        if np.array_equal(self.params["word"]["task"], self.params["image"]["task"]):
-            warnings.warn("Simulating data for MAIN hypothesis.")
-        else:
-            warnings.warn("Simulating data for ALTERNATIVE hypothesis.")
+        if verbose:
+            if np.array_equal(self.params["word"]["task"], self.params["image"]["task"]):
+                warnings.warn("Simulating data for MAIN hypothesis.")
+            else:
+                warnings.warn("Simulating data for ALTERNATIVE hypothesis.")
 
         if overwrite:
             if params is None:
