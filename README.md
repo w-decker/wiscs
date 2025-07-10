@@ -5,7 +5,7 @@ $$
 S = C + \epsilon
 $$
 
-However, reaction times across subjects and factors must also be taken into account. Data can be modeled with random effects for various factors by providing an `re_formula` and correlation matrices. 
+However, reaction times across subjects and factors must also be taken into account. Data can be modeled with random effects for various factors by providing an `re_formula` and correlation matrices. Further, reaction times are typically non-normal. Data are simulated with this in mind.
 
 ## Installation 
 
@@ -44,6 +44,9 @@ params = {
     'n.subject': ...,
     'n.question': ...,
     'n.item': ...,
+
+    'family': 'inverse_gaussian', 'link': 'identity', 'family_params': {'lambda_param': 1.5},
+    'shift':300, 'shift_noise':10
 }
 ```
 
@@ -63,7 +66,7 @@ template = wiscs.set_params(return_empty=True)
 ```
 ```
 Params must be a dictionary with the following keys:
- dict_keys(['word.perceptual', 'image.perceptual', 'word.conceptual', 'image.conceptual', 'word.task', 'image.task', 'sd.item', 'sd.question', 'sd.subject', 'sd.modality', 'sd.re_formula', 'sd.error', 'corr.subject', 'corr.question', 'corr.item', 'corr.modality', 'n.subject', 'n.question', 'n.item'])
+ dict_keys(['word.perceptual', 'image.perceptual', 'word.conceptual', 'image.conceptual', 'word.task', 'image.task', 'sd.item', 'sd.question', 'sd.subject', 'sd.modality', 'sd.re_formula', 'sd.error', 'corr.subject', 'corr.question', 'corr.item', 'corr.modality', 'n.subject', 'n.question', 'n.item', 'family', 'link', 'family_params', 'shift', 'shift_noise'])
 ```
 Printing `template` will tell you the expected types for each parameter. 
 
@@ -89,10 +92,16 @@ DG.fit_transform(params, overwrite=True)
 ```
 Setting `overwrite=True` means that this new set of params will overwrite the original ones set using `wiscs.set_params()`. The default is `False`, which makes it easy to substitue any number of parameter dictionaries iterativelys. 
 
-Data can be accessed with the `.data` attribute.
+Data can be accessed with the `.data` attribute, which returns a `NamedTuple` with attributes for each modality
 
 ```python
 word, image = DG.data
+```
+
+You can also extract summary statistics from your generated dataset.
+
+```
+DG.summary()
 ```
 
 Data can also be converted to a `pandas` dataframe for easier use.
@@ -101,16 +110,7 @@ Data can also be converted to a `pandas` dataframe for easier use.
 df = DG.to_pandas()
 ```
 
-### Plotting
-You can also plot the data with some default plotting functionality, including some histograms, line plots, heatmaps and scatter plots. These generally require one or more instances of a `DataGenerator` class as an input argument. 
-
-```python
-from wiscs.plotting import Plot
-P = Plot(DG)
-P.plot_bargraph()
-```
-
-## A note on how data are generated
+## A note on how random effects are generated
 Data generation begins with constructing a baseline matrix, which represents the expected reaction times before introducing variability. This matrix is built from predefined perceptual, conceptual, and task-related parameters, fully crossing subjects, questions, items, and modalities. Next, random effects are introduced to account for variability across subjects, questions, and items (if the user wishes). These effects are drawn from multivariate normal distributions, where correlation structures among effects are preserved using Cholesky decomposition (or eigen decomposition). Cholesky decomposition factorizes the covariance matrix into a lower triangular matrix, which allows us to efficiently generate correlated random deviations by multiplying it with standard normal samples. Structured deviations are then added to the baseline matrix, along with residual noise, to produce the final dataset, ensuring that both systematic and random variability reflect realistic experimental conditions.
 
 ## Contributing
