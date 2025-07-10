@@ -5,6 +5,13 @@ from . import config
 from .utils import *
 from .formula import Formula
 from .plotting import * 
+from .glm import (
+    LinkFunction, DistributionFamily,
+    IdentityLink, LogLink, InverseLink, SqrtLink,
+    GaussianFamily, GammaFamily, InverseGaussianFamily, LogNormalFamily,
+    get_link_function, get_family, validate_family_link_combination,
+    get_available_families, get_available_links, create_family_summary
+)
 
 import sys
 
