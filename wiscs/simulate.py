@@ -464,12 +464,18 @@ def generate(params: dict, seed: int = None):
     # Complete linear predictor
     eta = linear_predictor + total_contrib
     
+    # Add residual error on the linear predictor scale for all families
+    if params["sd"].get("error") is not None and family_name is 'lognormal':
+        error_sd = params["sd"]["error"]
+        # Generate residual error and add to linear predictor
+        residual_error = np.random.normal(0, error_sd, size=eta.shape)
+        eta = eta + residual_error
+    else:
+        family_params['sigma'] = params["sd"]["error"]
+    
     # Transform to mean scale
     mu = family.link.inverse_link(eta)
     
-    # Add additional error term if specified and family is Gaussian
-    if family_name == 'gaussian' and params["sd"].get("error") is not None:
-        family_params['sigma'] = params["sd"]["error"]
     
     # Extract shift parameters for RT modeling
     shift = params.get('shift', None)
