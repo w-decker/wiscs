@@ -38,6 +38,7 @@ from typing import Dict, List, Any
 import warnings
 
 from .params import VALID_FAMILY_LINK_COMBINATIONS
+from . import utils
 
 # Base Classes
 class LinkFunction(ABC):
@@ -231,7 +232,6 @@ class SqrtLink(LinkFunction):
     def derivative(mu: np.ndarray) -> np.ndarray:
         return 0.5 / np.sqrt(np.maximum(mu, 1e-10))
 
-
 # Distribution Family Implementations
 class GaussianFamily(DistributionFamily):
     """Normal/Gaussian distribution family
@@ -276,7 +276,6 @@ class GaussianFamily(DistributionFamily):
     
     def variance(self, mu: np.ndarray, sigma: float = 1.0, **kwargs) -> np.ndarray:
         return np.full_like(mu, sigma**2)
-
 
 class GammaFamily(DistributionFamily):
     """Gamma distribution family
@@ -347,21 +346,31 @@ class InverseGaussianFamily(DistributionFamily):
     
     Parameters
     ----------
-    lambda_param : float, default=1.0
-        Dispersion parameter (λ). Higher values reduce variability.
+    lambda : float, optional
+        Dispersion parameter. If not provided, uses the canonical 
+        parameterization lambda = mu^2 via utils.lsolve(mu).
+        Higher values reduce variability.
     """
     
-    def simulate(self, mu: np.ndarray, lambda_param: float = 1.0, shift: float = 0.0,
+    def simulate(self, mu: np.ndarray, lambda_param: float = None, shift: float = 0.0,
                  shift_noise: float = 0.0, **kwargs) -> np.ndarray:
         """Generate samples from Inverse Gaussian distribution with optional shift
         
         Parameters
         ----------
+        lambda_param : float, optional
+            Dispersion parameter. If None, uses utils.lsolve(mu) = mu^2 
+            which gives the canonical parameterization where mu^3/lambda = mu.
+            Can also be passed as 'lambda' in family_params dictionary.
         shift : float, default=0.0
             Minimum response time shift (e.g., 200ms for motor response time)
         shift_noise : float, default=0.0
             Standard deviation of random noise added to shift for each subject
         """
+        # Handle both 'lambda' and 'lambda_param' parameter names for backwards compatibility
+        if lambda_param is None and 'lambda' in kwargs:
+            lambda_param = kwargs['lambda']
+        
         # Check for non-positive means
         if np.any(mu <= 0):
             n_negative = np.sum(mu <= 0)
@@ -379,6 +388,10 @@ class InverseGaussianFamily(DistributionFamily):
             
             # Clip to small positive values to prevent crash
             mu = np.maximum(mu, 1e-6)
+        
+        # Use default lambda parameterization if not provided
+        if lambda_param is None:
+            lambda_param = utils.lsolve(mu)  # lambda = mu^2
         
         # Use numpy's wald distribution (proper parameterization)
         # numpy.random.wald(mean, scale) where scale = mean^3/lambda
@@ -404,7 +417,21 @@ class InverseGaussianFamily(DistributionFamily):
         
         return samples
     
-    def variance(self, mu: np.ndarray, lambda_param: float = 1.0, **kwargs) -> np.ndarray:
+    def variance(self, mu: np.ndarray, lambda_param: float = None, **kwargs) -> np.ndarray:
+        """Variance function for Inverse Gaussian distribution
+        
+        Parameters
+        ----------
+        lambda_param : float, optional
+            Dispersion parameter. If None, uses utils.lsolve(mu) = mu^2.
+            Can also be passed as 'lambda' in family_params dictionary.
+        """
+        # Handle both 'lambda' and 'lambda_param' parameter names for backwards compatibility
+        if lambda_param is None and 'lambda' in kwargs:
+            lambda_param = kwargs['lambda']
+            
+        if lambda_param is None:
+            lambda_param = utils.lsolve(mu)  # lambda = mu^2
         return mu**3 / lambda_param
 
 class LogNormalFamily(DistributionFamily):
@@ -608,9 +635,10 @@ def create_family_summary() -> Dict[str, Dict[str, Any]]:
             'use_case': 'Reaction time data with occasional very slow responses',
             'canonical_link': 'inverse',
             'valid_links': get_available_links('inverse_gaussian'),
-            'parameters': ['lambda_param'],
+            'parameters': ['lambda'],
             'rt_suitability': 'Excellent (heavy tail, diffusion model basis)',
-            'typical_params': {'lambda_param': 2.0}
+            'typical_params': {'lambda': None},  # Uses utils.lsolve(mu) = mu^2 by default
+            'default_behavior': 'lambda = mu^2 (canonical parameterization)'
         },
         'lognormal': {
             'description': 'Log-Normal distribution, classic choice for RT data',
