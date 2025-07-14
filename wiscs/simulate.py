@@ -29,7 +29,7 @@ def calculate_baseline(params: dict):
     """
     Create a baseline matrix on the linear predictor scale.
     
-    For GLMM, this creates the linear predictor (Xβ) before applying 
+    For GLMM, this creates the linear predictor before applying 
     the inverse link function and distribution family.
     """
     def create_matrix(rt, task):
@@ -303,14 +303,6 @@ class Data(NamedTuple):
 def generate(params: dict, seed: int = None):
     """
     Generate data using Generalized Linear Mixed Effects Model (GLMM)
-    
-    The model is: g(μ) = Xβ + Zu + offset
-    Where:
-    - g() is the link function
-    - μ is the conditional mean 
-    - Xβ is the fixed effects (baseline)
-    - Zu are the random effects
-    - Y ~ Family(μ, θ) from specified distribution family
     
     Returns
     -------
@@ -670,12 +662,36 @@ class DataGenerator(object):
         
         # Get family information
         family_info = self.get_family_info()
+        
+        # Get effective family parameters (including defaults)
+        effective_family_params = family_info['current']['family_params'].copy()
+        family_name = family_info['current']['family']
+        
+        # For inverse Gaussian, show default lambda if not specified
+        if family_name == 'inverse_gaussian':
+            # Check both possible parameter names
+            has_lambda = ('lambda' in effective_family_params and effective_family_params.get('lambda') is not None)
+            has_lambda_param = ('lambda_param' in effective_family_params and effective_family_params.get('lambda_param') is not None)
+            
+            if not has_lambda and not has_lambda_param:
+                # Calculate representative default lambda using mean RT
+                mean_word_rt = float(np.mean(self.data.word))
+                mean_image_rt = float(np.mean(self.data.image))
+                mean_rt = (mean_word_rt + mean_image_rt) / 2
+                
+                # Import utils to use lsolve
+                from . import utils
+                default_lambda = float(utils.lsolve(mean_rt))
+                
+                effective_family_params['lambda'] = f"auto (≈{default_lambda:.1f} based on mean RT={mean_rt:.1f})"
+                effective_family_params['_lambda_explanation'] = "Uses utils.lsolve(mu) = mu^2 for canonical parameterization"
             
         return {
             'model': {
                 'family': family_info['current']['family'],
                 'link': family_info['current']['link'],
-                'family_params': family_info['current']['family_params'],
+                'family_params_specified': family_info['current']['family_params'],
+                'family_params_effective': effective_family_params,
                 'description': family_info['description']
             },
             'data': {
