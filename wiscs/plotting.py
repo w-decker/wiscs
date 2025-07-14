@@ -24,7 +24,7 @@ class PlotTheme:
     
     # Color palettes
     COLORS = {
-        'modality': {'word': '#2E86AB', 'image': '#A23B72'},  # Blue and magenta
+        'modality': {'word': "#2E6DAB", 'image': "#3BA244"},  # Blue and magenta
         'qualitative': ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51'],
         'sequential': ['#F7FBFF', '#DEEBF7', '#C6DBEF', '#9ECAE1', '#6BAED6', '#4292C6', '#2171B5', '#08519C', '#08306B'],
         'diverging': ['#8E0152', '#C51B7D', '#DE77AE', '#F1B6DA', '#FDE0EF', '#F7F7F7', '#E6F5D0', '#B8E186', '#7FBC41', '#4D9221', '#276419']
