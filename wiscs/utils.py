@@ -29,3 +29,6 @@ def nearest_square_dims(n:int) -> int | int:
         else:
             rows += 1
     return rows, cols
+
+lsolve = lambda mu: mu**2
+lsolve.__doc__ = "Solve the Wald distribution scale parameter for a given mean mu such that mu**3/l = mu."
