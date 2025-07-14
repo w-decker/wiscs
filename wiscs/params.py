@@ -53,7 +53,7 @@ VALID_FAMILY_LINK_COMBINATIONS = {
 DEFAULT_FAMILY_PARAMS = {
     'gaussian': {'sigma': 1.0},
     'gamma': {'shape': 2.0},
-    'inverse_gaussian': {'lambda_param': 1.0},
+    'inverse_gaussian': {'lambda': 1.0},
     'lognormal': {'sigma': 0.25}
 }
 
@@ -64,7 +64,7 @@ RT_FAMILY_CONFIGS = {
         'description': 'Gamma distribution with log link - good for right-skewed RT data'
     },
     'inverse_gaussian': {
-        'lambda_param': 2.0,  # Dispersion parameter (higher = less dispersed)
+        'lambda': 2.0,  # Dispersion parameter (higher = less dispersed)
         'description': 'Inverse Gaussian with inverse link - theoretical RT distribution'
     },
     'lognormal': {
@@ -261,10 +261,12 @@ def _validate_family_params(family: str, family_params: dict) -> None:
                 raise ValueError("Gamma family: 'shape' must be a positive number")
                 
     elif family == 'inverse_gaussian':
-        if 'lambda_param' in family_params:
-            lambda_param = family_params['lambda_param']
-            if not isinstance(lambda_param, (int, float)) or lambda_param <= 0:
-                raise ValueError("Inverse Gaussian family: 'lambda_param' must be a positive number")
+        if 'lambda' in family_params:
+            lambda_param = family_params['lambda']
+            # Allow None for automatic lambda calculation using utils.lsolve(mu)
+            if lambda_param is not None:
+                if not isinstance(lambda_param, (int, float)) or lambda_param <= 0:
+                    raise ValueError("Inverse Gaussian family: 'lambda' must be a positive number or None (for automatic calculation)")
                 
     elif family == 'lognormal':
         if 'sigma' in family_params:
