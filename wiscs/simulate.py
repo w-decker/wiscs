@@ -471,6 +471,29 @@ def generate(params: dict, seed: int = None):
     # Transform to mean scale
     mu = family.link.inverse_link(eta)
     
+    # numerical stability bounds for non-Gaussian families with identity link
+    if family_name != 'gaussian' and link_name == 'identity':
+        
+        min_rt = 50.0    
+        max_rt = 10000.0
+        
+        n_extreme = np.sum((mu < min_rt) | (mu > max_rt))
+        if n_extreme > 0:
+            n_total = mu.size
+            pct_extreme = 100 * n_extreme / n_total
+            
+            warnings.warn(
+                f"Simulation stability: {n_extreme}/{n_total} ({pct_extreme:.1f}%) "
+                f"μ values are outside stable range [{min_rt}, {max_rt}] ms. "
+                f"Range: [{np.min(mu):.1f}, {np.max(mu):.1f}] ms. "
+                f"Applying bounds to prevent R convergence issues. "
+                f"Consider: (1) reducing random effect SDs, (2) increasing baseline RTs, "
+                f"or (3) using log link for better numerical properties.",
+                UserWarning
+            )
+        
+        mu = np.clip(mu, min_rt, max_rt)
+    
     
     # Extract shift parameters for RT modeling
     shift = params.get('shift', None)
