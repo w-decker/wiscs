@@ -447,12 +447,10 @@ class Plot:
         stats_text.append(f"  Questions: {n_params.get('question', 'Unknown')}")
         stats_text.append(f"  Items: {n_params.get('item', 'Unknown')}")
         # Handle family attribute safely
-        family_name = "Unknown"
-        if hasattr(self.dg, 'family') and self.dg.family:
-            family_name = self.dg.family.__class__.__name__
-        elif hasattr(self, 'family') and self.family:
-            family_name = self.family.__class__.__name__
+        family_name = self.params.get('family', 'Unknown')
+        link_name = self.params.get('link', 'Unknown')
         stats_text.append(f"  Family: {family_name}")
+        stats_text.append(f"  Link: {link_name}")
         
         axes_flat[3].text(0.05, 0.95, '\n'.join(stats_text), transform=axes_flat[3].transAxes,
                     fontsize=10, verticalalignment='top', fontfamily='monospace',
