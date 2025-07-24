@@ -447,8 +447,8 @@ class Plot:
         stats_text.append(f"  Questions: {n_params.get('question', 'Unknown')}")
         stats_text.append(f"  Items: {n_params.get('item', 'Unknown')}")
         # Handle family attribute safely
-        family_name = self.params.get('family', 'Unknown')
-        link_name = self.params.get('link', 'Unknown')
+        family_name = self.params.get('glm').get('family', 'Unknown')
+        link_name = self.params.get('glm').get('link', 'Unknown')
         stats_text.append(f"  Family: {family_name}")
         stats_text.append(f"  Link: {link_name}")
         

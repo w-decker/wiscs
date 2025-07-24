@@ -3,7 +3,7 @@ GENERALIZED LINEAR MIXED EFFECTS MODEL (GLMM) SIMULATION FOR REACTION TIME (RT) 
 """
 
 import numpy as np # type: ignore
-from typing import Union, NamedTuple, Callable
+from typing import Union, NamedTuple
 import copy
 import warnings
 import pandas as pd # type: ignore
@@ -13,15 +13,9 @@ from .formula import Formula
 from . import config
 from .params import (
     validate_params, parse_params, update_params,
-    get_glmm_defaults, merge_glmm_defaults,
-    VALID_FAMILIES, VALID_LINKS, VALID_FAMILY_LINK_COMBINATIONS,
     DEFAULT_FAMILY_PARAMS, RT_FAMILY_CONFIGS,
-    _validate_glmm_params
 )
 from .glm import (
-    LinkFunction, DistributionFamily,
-    IdentityLink, LogLink, InverseLink, SqrtLink,
-    GaussianFamily, GammaFamily, InverseGaussianFamily, LogNormalFamily,
     get_link_function, get_family, validate_family_link_combination
 )
 
@@ -471,30 +465,6 @@ def generate(params: dict, seed: int = None):
     # Transform to mean scale
     mu = family.link.inverse_link(eta)
     
-    # numerical stability bounds for non-Gaussian families with identity link
-    if family_name != 'gaussian' and link_name == 'identity':
-        
-        min_rt = 50.0    
-        max_rt = 10000.0
-        
-        n_extreme = np.sum((mu < min_rt) | (mu > max_rt))
-        if n_extreme > 0:
-            n_total = mu.size
-            pct_extreme = 100 * n_extreme / n_total
-            
-            warnings.warn(
-                f"Simulation stability: {n_extreme}/{n_total} ({pct_extreme:.1f}%) "
-                f"μ values are outside stable range [{min_rt}, {max_rt}] ms. "
-                f"Range: [{np.min(mu):.1f}, {np.max(mu):.1f}] ms. "
-                f"Applying bounds to prevent R convergence issues. "
-                f"Consider: (1) reducing random effect SDs, (2) increasing baseline RTs, "
-                f"or (3) using log link for better numerical properties.",
-                UserWarning
-            )
-        
-        mu = np.clip(mu, min_rt, max_rt)
-    
-    
     # Extract shift parameters for RT modeling
     shift = params.get('sd').get('shift', None)
     shift_noise = params.get('sd').get('shift_noise', None)
@@ -550,7 +520,7 @@ class DataGenerator(object):
             if np.array_equal(self.params["word"]["task"], self.params["image"]["task"]):
                 warnings.warn("Simulating data for MAIN hypothesis.")
             else:
-                warnings.warn("Simulating data for ALTERNATIVE hypothesis.")
+                warnings.warn("Simulating data for NULL hypothesis.")
 
         if overwrite:
             if params is None:

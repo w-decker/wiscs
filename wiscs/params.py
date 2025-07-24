@@ -190,7 +190,6 @@ def validate_params(params: dict) -> bool:
     
     return True
 
-
 def _validate_glmm_params(params: dict) -> None:
     """
     Validate GLMM-specific parameters.
@@ -276,67 +275,6 @@ def _validate_family_params(family: str, family_params: dict) -> None:
             if not isinstance(sigma, (int, float)) or sigma <= 0:
                 raise ValueError("Log-Normal family: 'sigma' must be a positive number")
 
-
-def get_glmm_defaults() -> dict:
-    """
-    Get default GLMM parameters.
-    
-    Returns
-    -------
-    dict
-        Default GLMM parameters
-    """
-    defaults = {
-        'family': 'gaussian',
-        'link': 'identity',
-        'family_params': DEFAULT_FAMILY_PARAMS['gaussian'].copy()
-    }
-    # Add shift defaults
-    defaults.update(DEFAULT_SHIFT_PARAMS)
-    return defaults
-
-
-def get_rt_glmm_config(rt_type: str = 'gamma') -> dict:
-    """
-    Get recommended GLMM configuration for reaction time data.
-    
-    Parameters
-    ----------
-    rt_type : str
-        Type of RT distribution: 'gamma', 'inverse_gaussian', 'lognormal', 'gaussian'
-        
-    Returns
-    -------
-    dict
-        Recommended GLMM configuration
-        
-    Raises
-    ------
-    ValueError
-        If rt_type is not recognized
-    """
-    rt_configs = {
-        'gamma': {'family': 'gamma', 'link': 'log'},
-        'inverse_gaussian': {'family': 'inverse_gaussian', 'link': 'inverse'},
-        'lognormal': {'family': 'lognormal', 'link': 'log'},
-        'gaussian': {'family': 'gaussian', 'link': 'identity'}
-    }
-    
-    if rt_type not in rt_configs:
-        raise ValueError(f"Unknown RT type: {rt_type}. Available: {list(rt_configs.keys())}")
-    
-    config = rt_configs[rt_type].copy()
-    config['family_params'] = RT_FAMILY_CONFIGS[rt_type].copy()
-    
-    # Remove description from family_params
-    if 'description' in config['family_params']:
-        del config['family_params']['description']
-    
-    # Add RT-appropriate shift parameters
-    config.update(DEFAULT_SHIFT_PARAMS)
-    
-    return config
-
 def parse_params(params):
     """
     Parse a dictionary with compound keys into a nested dictionary.
@@ -361,7 +299,7 @@ def parse_params(params):
 
 def update_params(params, kwargs) -> dict:
     """
-    Update parameters with new values, including GLMM parameters.
+    Update parameters with new values.
 
     Parameters
     ----------
@@ -376,95 +314,15 @@ def update_params(params, kwargs) -> dict:
     dict: Updated parameters.
     """
     update = params.copy()
-    
-    # Use GLMM-aware parsing
-    new = parse_params_with_glmm(kwargs)
-    
-    # Handle GLMM parameters at top level
-    glmm_keys = {'family', 'link', 'family_params'}
-    for key in glmm_keys:
-        if key in new:
-            update[key] = new[key]
+    new = parse_params(kwargs)
 
-    # Handle nested parameters
     for key, subdict in new.items():
-        if key not in glmm_keys:  # Skip GLMM params, already handled
-            if key in update and isinstance(update[key], dict) and isinstance(subdict, dict):
-                update[key].update(subdict)
-            else:
-                update[key] = subdict
+        if key in update and isinstance(update[key], dict) and isinstance(subdict, dict):
+            update[key].update(subdict)
+        else:
+            update[key] = subdict
 
     return update
-
-def parse_params_with_glmm(params):
-    """
-    Parse parameters including GLMM specifications.
-    
-    This extends the standard parse_params to handle GLMM parameters
-    which don't follow the dot notation pattern.
-    
-    Parameters
-    ----------
-    params : dict
-        Dictionary with keys in the format 'category.attribute' plus GLMM keys
-        
-    Returns
-    -------
-    dict
-        Nested dictionary with categories as top-level keys and GLMM params at top level
-    """
-    parsed = defaultdict(dict)
-    glmm_keys = {'family', 'link', 'family_params'}
-    
-    for key, value in params.items():
-        if key in glmm_keys:
-            # GLMM parameters stay at top level
-            parsed[key] = value
-        else:
-            # Standard dot-notation parameters
-            try:
-                category, attribute = key.split('.')
-                parsed[category][attribute] = value
-            except ValueError:
-                parsed[key] = value
-                
-    return dict(parsed)
-
-def merge_glmm_defaults(params: dict) -> dict:
-    """
-    Merge user parameters with GLMM defaults.
-    
-    Parameters
-    ----------
-    params : dict
-        User-provided parameters
-        
-    Returns
-    -------
-    dict
-        Parameters with GLMM defaults filled in
-    """
-    result = params.copy()
-    
-    # Set GLMM defaults if not specified
-    if 'family' not in result:
-        result['family'] = 'gaussian'
-        
-    if 'link' not in result:
-        if result.get('family') == 'gamma':
-            result['link'] = 'log'  # Recommended for gamma
-        elif result.get('family') == 'inverse_gaussian':
-            result['link'] = 'inverse'  # Canonical link
-        elif result.get('family') == 'lognormal':
-            result['link'] = 'log'  # Natural for lognormal
-        else:
-            result['link'] = 'identity'  # Default
-            
-    if 'family_params' not in result:
-        family = result.get('family', 'gaussian')
-        result['family_params'] = DEFAULT_FAMILY_PARAMS.get(family, {}).copy()
-    
-    return result
 
 def _validate_shift_params(params: dict) -> None:
     """
