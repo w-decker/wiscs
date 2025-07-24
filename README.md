@@ -38,6 +38,8 @@ params = {
     'sd.subject': ...,
     'sd.error': ...,
     'sd.re_formula':...,
+    'sd.shift':...,
+    'sd.shift_noise':...,
 
     'corr.{factor}':...,
 
@@ -45,8 +47,7 @@ params = {
     'n.question': ...,
     'n.item': ...,
 
-    'family': 'inverse_gaussian', 'link': 'identity', 'family_params': {'lambda_param': 1.5},
-    'shift':300, 'shift_noise':10
+    'glm.family': ..., 'glm.link': ..., 'glm.family_params': ...
 }
 ```
 
@@ -66,7 +67,8 @@ template = wiscs.set_params(return_empty=True)
 ```
 ```
 Params must be a dictionary with the following keys:
- dict_keys(['word.perceptual', 'image.perceptual', 'word.conceptual', 'image.conceptual', 'word.task', 'image.task', 'sd.item', 'sd.question', 'sd.subject', 'sd.modality', 'sd.re_formula', 'sd.error', 'corr.subject', 'corr.question', 'corr.item', 'corr.modality', 'n.subject', 'n.question', 'n.item', 'family', 'link', 'family_params', 'shift', 'shift_noise'])
+ dict_keys(['word.perceptual', 'image.perceptual', 'word.conceptual', 'image.conceptual', 'word.task', 'image.task', 'sd.item', 'sd.question', 'sd.subject', 'sd.modality', 'sd.re_formula', 'sd.error', 'sd.shift', 'sd.shift_noise', 'corr.subject', 'corr.question', 'corr.item', 'corr.modality', 'n.subject', 'n.question', 'n.item', 'glm.family', 'glm.link', 'glm.family_params'])
+
 ```
 Printing `template` will tell you the expected types for each parameter. 
 
