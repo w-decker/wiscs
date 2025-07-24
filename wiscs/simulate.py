@@ -35,8 +35,8 @@ def calculate_baseline(params: dict):
         task = np.asarray(task, dtype=float)[np.newaxis, :, np.newaxis]
         return matrix + task
 
-    family_name = params.get('family', 'gaussian')
-    link_name = params.get('link', 'identity')
+    family_name = params.get('glm').get('family', 'gaussian')
+    link_name = params.get('glm').get('link', 'identity')
     validate_family_link_combination(family_name, link_name)
     link = get_link_function(link_name)
 
