@@ -2,6 +2,7 @@ from collections import defaultdict
 import numpy as np
 import numpy.typing as npt
 from typing import Callable, Union, get_args
+from .formula import Formula
 
 EMPTY_PARAMS = {
     'word.perceptual': Union[int, float],
@@ -17,7 +18,7 @@ EMPTY_PARAMS = {
     'sd.question': Union[npt.ArrayLike, None, int, float, dict, list],
     'sd.subject': Union[npt.ArrayLike, None, int, float, dict, list],
     'sd.modality': Union[npt.ArrayLike, None, int, float, dict, list],
-    'sd.re_formula':str,
+    'sd.re_formula':Union[str, Formula],
     "sd.error": Union[int, float, None],
 
     "corr.subject":Union[npt.ArrayLike, None, int, float, dict],

@@ -235,7 +235,7 @@ def make_random_effects(params: dict):
     if not re_formula:
         raise ValueError("Missing 'sd.re_formula' in params['sd'].")
 
-    formula = Formula(re_formula)
+    formula = Formula(re_formula) if isinstance(re_formula, str) else re_formula
     random_effects = {}
 
     for term in formula:
@@ -341,7 +341,7 @@ def generate(params: dict, seed: int = None):
     modality_code = np.array([0, 1]).reshape(1, 1, 1, n_mod)
 
     # parse formula and apply random effects
-    formula = Formula(params["sd"]["re_formula"])
+    formula = Formula(params["sd"]["re_formula"]) if isinstance(params["sd"]["re_formula"], str) else params["sd"]["re_formula"] 
 
     for term in formula:
         content = term.strip("()")
