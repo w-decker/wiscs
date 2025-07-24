@@ -312,15 +312,15 @@ def generate(params: dict, seed: int = None):
         np.random.seed(seed)
 
     # get family and link specifications
-    family_name = params.get('family', 'gaussian')
-    link_name = params.get('link', 'identity') 
+    family_name = params.get('glm').get('family', 'gaussian')
+    link_name = params.get('glm').get('link', 'identity') 
     
     # validate and get family object
     validate_family_link_combination(family_name, link_name)
     family = get_family(family_name, link_name)
     
     # get distribution parameters
-    family_params = params.get('family_params', {})
+    family_params = params.get('glm').get('family_params', {})
     if family_params is None:
         family_params = {}
     else:
@@ -496,9 +496,9 @@ def generate(params: dict, seed: int = None):
     
     
     # Extract shift parameters for RT modeling
-    shift = params.get('shift', None)
-    shift_noise = params.get('shift_noise', None)
-    
+    shift = params.get('sd').get('shift', None)
+    shift_noise = params.get('sd').get('shift_noise', None)
+
     # Generate observations from the specified family: Y ~ Family(μ, θ)
     simulated_data = family.simulate(mu, shift=shift, shift_noise=shift_noise, **family_params)
     
@@ -781,9 +781,9 @@ class DataGenerator(object):
         dict
             Information about family, link, and parameters
         """
-        family_name = self.params.get('family', 'gaussian')
-        link_name = self.params.get('link', 'identity')
-        family_params = self.params.get('family_params', {})
+        family_name = self.params.get('glm').get('family', 'gaussian')
+        link_name = self.params.get('glm').get('link', 'identity')
+        family_params = self.params.get('glm').get('family_params', {})
         
         # Get recommended params for comparison
         recommended = get_recommended_family_params_for_rt()

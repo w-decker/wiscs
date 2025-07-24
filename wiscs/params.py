@@ -20,6 +20,8 @@ EMPTY_PARAMS = {
     'sd.modality': Union[npt.ArrayLike, None, int, float, dict, list],
     'sd.re_formula':Union[str, Formula],
     "sd.error": Union[int, float, None],
+    "sd.shift": Union[int, float, None],  # Minimum RT shift (adds to all generated RTs)
+    "sd.shift_noise": Union[int, float, None],  # Subject-level Gaussian noise
 
     "corr.subject":Union[npt.ArrayLike, None, int, float, dict],
     "corr.question":Union[npt.ArrayLike, None, int, float, dict],
@@ -31,11 +33,10 @@ EMPTY_PARAMS = {
     'n.item': int,
     
     # GLMM parameters
-    'family': str,  # Distribution family: 'gaussian', 'gamma', 'inverse_gaussian', 'lognormal'
-    'link': str,    # Link function: 'identity', 'log', 'inverse', 'sqrt'
-    'family_params': Union[dict, None],  # Family-specific parameters
-    'shift': Union[int, float, None],  # Minimum RT shift (adds to all generated RTs)
-    'shift_noise': Union[int, float, None],  # Subject-level Gaussian noise for shift
+    'glm.family': str,  # Distribution family: 'gaussian', 'gamma', 'inverse_gaussian', 'lognormal'
+    'glm.link': str,    # Link function: 'identity', 'log', 'inverse', 'sqrt'
+    'glm.family_params': Union[dict, None],  # Family-specific parameters
+
 }
 
 # Valid GLMM combinations
