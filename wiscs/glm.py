@@ -81,23 +81,6 @@ class LinkFunction(ABC):
             Values on the mean scale (response scale)
         """
         pass
-    
-    @staticmethod
-    @abstractmethod
-    def derivative(mu: np.ndarray) -> np.ndarray:
-        """Derivative of link function:
-        
-        Parameters
-        ----------
-        mu : np.ndarray
-            Values on the mean scale
-            
-        Returns
-        -------
-        np.ndarray
-            Derivative values
-        """
-        pass
 
 class DistributionFamily(ABC):
     """Abstract base class for distribution families
@@ -179,10 +162,6 @@ class IdentityLink(LinkFunction):
     @staticmethod
     def inverse_link(eta: np.ndarray) -> np.ndarray:
         return eta
-    
-    @staticmethod
-    def derivative(mu: np.ndarray) -> np.ndarray:
-        return np.ones_like(mu)
 
 class LogLink(LinkFunction):
     """Log link
@@ -195,10 +174,6 @@ class LogLink(LinkFunction):
     @staticmethod
     def inverse_link(eta: np.ndarray) -> np.ndarray:
         return np.exp(np.minimum(eta, 700))  # Avoid overflow
-    
-    @staticmethod
-    def derivative(mu: np.ndarray) -> np.ndarray:
-        return 1.0 / np.maximum(mu, 1e-10)
 
 class InverseLink(LinkFunction):
     """Inverse link
@@ -211,11 +186,6 @@ class InverseLink(LinkFunction):
     @staticmethod
     def inverse_link(eta: np.ndarray) -> np.ndarray:
         return 1.0 / np.maximum(eta, 1e-10)
-    
-    @staticmethod
-    def derivative(mu: np.ndarray) -> np.ndarray:
-        return -1.0 / np.maximum(mu**2, 1e-20)
-
 
 class SqrtLink(LinkFunction):
     """Square root link"""
@@ -227,10 +197,6 @@ class SqrtLink(LinkFunction):
     @staticmethod
     def inverse_link(eta: np.ndarray) -> np.ndarray:
         return np.maximum(eta, 0)**2
-    
-    @staticmethod
-    def derivative(mu: np.ndarray) -> np.ndarray:
-        return 0.5 / np.sqrt(np.maximum(mu, 1e-10))
 
 # Distribution Family Implementations
 class GaussianFamily(DistributionFamily):
