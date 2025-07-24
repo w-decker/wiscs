@@ -533,18 +533,13 @@ class DataGenerator(object):
     def __init__(self):
         if config.p is not None:
             self.params = copy.deepcopy(config.p)
-        else:
-            self.params = {}
-            
-        # check GLMM parameters are initialized
-        if 'family' not in self.params:
-            glmm_defaults = get_glmm_defaults()
-            self.params.update(glmm_defaults)
-            
-        self.data = None
-        self.word = None
-        self.image = None
+            self.data = None
+            self.word = None
+            self.image = None
 
+        else:
+            raise LookupError(f"Parameter configuration not found.\n Run `wiscs.set_params()` first.")
+        
     def fit_transform(self, params: dict = None, overwrite: bool = False, seed: int = None, verbose: bool = False):
         """
         Generate data based on the current (or new) params. 
@@ -577,15 +572,16 @@ class DataGenerator(object):
         else:
             if params is not None and len(params) == len(self.params):
                 validate_params(params)
-                gen_params = parse_params(params)
-                raw_data = generate(gen_params, seed=seed)
+                self.params = parse_params(params)
+                raw_data = generate(self.params, seed=seed)
                 self.data = Data(word=raw_data[:, :, :, 0], image=raw_data[:, :, :, 1])
                 self.word = self.data.word
                 self.image = self.data.image
             elif params is not None and len(params) != len(self.params):
-                # partial update
-                updated = update_params(self.params, params)
-                raw_data = generate(updated, seed=seed)
+                # partial update - now properly persisted to self.params
+                params = parse_params(params)
+                self.params = update_params(self.params, params)
+                raw_data = generate(self.params, seed=seed)
                 self.data = Data(word=raw_data[:, :, :, 0], image=raw_data[:, :, :, 1])
                 self.word = self.data.word
                 self.image = self.data.image
