@@ -112,6 +112,8 @@ Data can also be converted to a `pandas` dataframe for easier use.
 df = DG.to_pandas()
 ```
 
+![alt text](image.png)
+
 ## A note on how random effects are generated
 Data generation begins with constructing a baseline matrix, which represents the expected reaction times before introducing variability. This matrix is built from predefined perceptual, conceptual, and task-related parameters, fully crossing subjects, questions, items, and modalities. Next, random effects are introduced to account for variability across subjects, questions, and items (if the user wishes). These effects are drawn from multivariate normal distributions, where correlation structures among effects are preserved using Cholesky decomposition (or eigen decomposition). Cholesky decomposition factorizes the covariance matrix into a lower triangular matrix, which allows us to efficiently generate correlated random deviations by multiplying it with standard normal samples. Structured deviations are then added to the baseline matrix, along with residual noise, to produce the final dataset, ensuring that both systematic and random variability reflect realistic experimental conditions.
 
